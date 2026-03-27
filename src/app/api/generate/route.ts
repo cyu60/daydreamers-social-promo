@@ -1,11 +1,11 @@
 import { streamText } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { openai } from "@ai-sdk/openai";
 
 export async function POST(req: Request) {
   const { projectDescription, brandColors, tone } = await req.json();
 
   const result = streamText({
-    model: anthropic("claude-sonnet-4.5-20250514" as any),
+    model: openai("gpt-4o"),
     system: `You are an expert social media marketer and copywriter. Your job is to generate promotional content for projects across multiple channels.
 
 Always respond in the following exact format with these section headers. Do not deviate from this format:
