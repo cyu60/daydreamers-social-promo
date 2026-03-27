@@ -17,14 +17,38 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "DayDreamers | Social Promo Generator",
   description:
-    "Generate promotional content for your projects across LinkedIn, Instagram, Twitter/X, and Email. Built by DayDreamers.",
+    "Generate promotional content for your projects across LinkedIn, Instagram, Twitter/X, and Email. AI-powered by DayDreamers Academy.",
+  metadataBase: new URL("https://socials.daydreamers-academy.com"),
   openGraph: {
+    type: "website",
+    siteName: "DayDreamers Academy",
     title: "DayDreamers | Social Promo Generator",
-    description: "AI-powered promotional content for every channel.",
-    images: ["https://www.daydreamers-academy.com/images/og-preview.png"],
+    description:
+      "Describe your project. Get AI-generated promotional content for LinkedIn, Instagram, Twitter/X, and email — plus branded image templates. Built by DayDreamers Academy.",
+    url: "https://socials.daydreamers-academy.com",
+    images: [
+      {
+        url: "/og-preview.png",
+        width: 2172,
+        height: 1274,
+        alt: "DayDreamers Social Promo Generator",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DayDreamers | Social Promo Generator",
+    description:
+      "AI-powered promotional content for every channel. Built by DayDreamers Academy.",
+    images: ["/og-preview.png"],
   },
   icons: {
-    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><path fill='none' stroke='%231c3fdc' stroke-width='18' stroke-linecap='round' stroke-linejoin='round' d='M166 82c-8-4-17-6-27-6c-32 0-58 26-58 58s26 58 58 58c26 0 48-17 55-41c-7 4-16 6-25 6c-26 0-46-20-46-46c0-12 4-22 11-29c7-7 20-7 32 0z'/></svg>",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
 };
 
