@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   const { projectDescription, brandColors, tone } = await req.json();
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: openai("gpt-5.4"),
     system: `You are an expert social media marketer and copywriter. Your job is to generate promotional content for projects across multiple channels.
 
 Always respond in the following exact format with these section headers. Do not deviate from this format:
