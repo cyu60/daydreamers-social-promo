@@ -2,55 +2,31 @@
 
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 
 type ChannelKey = "linkedin" | "instagram" | "twitter" | "email";
 
-const CHANNELS: { key: ChannelKey; label: string; separator: string }[] = [
-  { key: "linkedin", label: "LinkedIn", separator: "---LINKEDIN---" },
-  { key: "instagram", label: "Instagram", separator: "---INSTAGRAM---" },
-  { key: "twitter", label: "Twitter/X", separator: "---TWITTER---" },
-  { key: "email", label: "Email", separator: "---EMAIL---" },
+const CHANNELS: { key: ChannelKey; label: string; separator: string; icon: string }[] = [
+  { key: "linkedin", label: "LinkedIn", separator: "---LINKEDIN---", icon: "M0 1.8C0 .8.8 0 1.8 0h12.4C15.2 0 16 .8 16 1.8v12.4c0 1-.8 1.8-1.8 1.8H1.8C.8 16 0 15.2 0 14.2V1.8zM4.8 13.5V6.2H2.5v7.3h2.3zM3.6 5.2a1.3 1.3 0 100-2.6 1.3 1.3 0 000 2.6zM13.5 13.5V9.4c0-2.2-1.2-3.3-2.8-3.3-1.3 0-1.8.7-2.1 1.2V6.2H6.3v7.3h2.3V9.7c0-.2 0-.4.1-.5.2-.5.7-1 1.4-1 1 0 1.4.8 1.4 1.9v3.4h2.3z" },
+  { key: "instagram", label: "Instagram", separator: "---INSTAGRAM---", icon: "M8 0C5.8 0 5.6.01 4.7.05 3.8.09 3.2.22 2.7.42c-.53.2-.98.48-1.42.92-.44.44-.72.89-.92 1.42-.2.5-.33 1.1-.37 2C.01 5.6 0 5.8 0 8s.01 2.4.05 3.3c.04.9.17 1.5.37 2 .2.53.48.98.92 1.42.44.44.89.72 1.42.92.5.2 1.1.33 2 .37.9.04 1.1.05 3.3.05s2.4-.01 3.3-.05c.9-.04 1.5-.17 2-.37.53-.2.98-.48 1.42-.92.44-.44.72-.89.92-1.42.2-.5.33-1.1.37-2 .04-.9.05-1.1.05-3.3s-.01-2.4-.05-3.3c-.04-.9-.17-1.5-.37-2-.2-.53-.48-.98-.92-1.42A3.9 3.9 0 0013.3.42c-.5-.2-1.1-.33-2-.37C10.4.01 10.2 0 8 0zm0 1.44c2.14 0 2.39.01 3.23.05.78.03 1.2.16 1.48.27.37.14.64.32.92.6.28.28.46.55.6.92.11.28.24.7.27 1.48.04.84.05 1.09.05 3.23s-.01 2.39-.05 3.23c-.03.78-.16 1.2-.27 1.48-.14.37-.32.64-.6.92-.28.28-.55.46-.92.6-.28.11-.7.24-1.48.27-.84.04-1.09.05-3.23.05s-2.39-.01-3.23-.05c-.78-.03-1.2-.16-1.48-.27a2.5 2.5 0 01-.92-.6 2.5 2.5 0 01-.6-.92c-.11-.28-.24-.7-.27-1.48-.04-.84-.05-1.09-.05-3.23s.01-2.39.05-3.23c.03-.78.16-1.2.27-1.48.14-.37.32-.64.6-.92.28-.28.55-.46.92-.6.28-.11.7-.24 1.48-.27.84-.04 1.09-.05 3.23-.05zM8 3.89a4.11 4.11 0 100 8.22 4.11 4.11 0 000-8.22zM8 10.67a2.67 2.67 0 110-5.34 2.67 2.67 0 010 5.34zm5.23-6.97a.96.96 0 11-1.92 0 .96.96 0 011.92 0z" },
+  { key: "twitter", label: "Twitter/X", separator: "---TWITTER---", icon: "M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633z" },
+  { key: "email", label: "Email", separator: "---EMAIL---", icon: "M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" },
 ];
 
 const TONES = ["Professional", "Casual", "Exciting"] as const;
 
-function parseContent(
-  raw: string
-): Record<ChannelKey, string> {
-  const result: Record<ChannelKey, string> = {
-    linkedin: "",
-    instagram: "",
-    twitter: "",
-    email: "",
-  };
-
+function parseContent(raw: string): Record<ChannelKey, string> {
+  const result: Record<ChannelKey, string> = { linkedin: "", instagram: "", twitter: "", email: "" };
   for (let i = 0; i < CHANNELS.length; i++) {
     const channel = CHANNELS[i];
     const startIdx = raw.indexOf(channel.separator);
     if (startIdx === -1) continue;
-
     const contentStart = startIdx + channel.separator.length;
     const nextChannel = CHANNELS[i + 1];
-    const endIdx = nextChannel
-      ? raw.indexOf(nextChannel.separator, contentStart)
-      : raw.length;
-
-    result[channel.key] = raw
-      .slice(contentStart, endIdx === -1 ? undefined : endIdx)
-      .trim();
+    const endIdx = nextChannel ? raw.indexOf(nextChannel.separator, contentStart) : raw.length;
+    result[channel.key] = raw.slice(contentStart, endIdx === -1 ? undefined : endIdx).trim();
   }
-
   return result;
 }
 
@@ -61,32 +37,25 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [rawOutput, setRawOutput] = useState("");
   const [copiedChannel, setCopiedChannel] = useState<ChannelKey | null>(null);
+  const [activeTab, setActiveTab] = useState<ChannelKey>("linkedin");
 
   const parsedContent = parseContent(rawOutput);
 
   const handleGenerate = useCallback(async () => {
     if (!projectDescription.trim()) return;
-
     setIsGenerating(true);
     setRawOutput("");
-
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectDescription, brandColors, tone }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate content");
-      }
-
+      if (!response.ok) throw new Error("Failed to generate content");
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body");
-
       const decoder = new TextDecoder();
       let accumulated = "";
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -111,97 +80,116 @@ export default function Home() {
   const hasContent = CHANNELS.some((ch) => parsedContent[ch.key].length > 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b border-border">
-        <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-[var(--cobalt)] flex items-center justify-center">
-              <span className="text-sm font-bold text-white">D</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                DayDreamers Social Promo
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Generate promotional content across channels
-              </p>
-            </div>
-          </div>
-          <Badge
-            variant="secondary"
-            className="text-xs font-mono"
-          >
-            AI-Powered
-          </Badge>
+      <header
+        style={{
+          borderBottom: "1.5px solid var(--rule)",
+          background: "rgba(245,242,237,0.85)",
+          backdropFilter: "blur(14px)",
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+        }}
+      >
+        <div className="mx-auto max-w-5xl px-6 h-[52px] flex items-center justify-between">
+          <a href="https://www.daydreamers-academy.com" target="_blank" rel="noopener" className="flex items-center gap-2.5 no-underline">
+            <svg className="w-7 h-7 flex-shrink-0" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+              <path fill="none" stroke="#1c3fdc" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" d="M166 82c-8-4-17-6-27-6c-32 0-58 26-58 58s26 58 58 58c26 0 48-17 55-41c-7 4-16 6-25 6c-26 0-46-20-46-46c0-12 4-22 11-29c7-7 20-7 32 0z"/>
+            </svg>
+            <span style={{ fontFamily: "var(--font-serif, 'DM Serif Display', Georgia, serif)", fontSize: "1rem", color: "var(--ink)" }}>
+              DayDreamers
+            </span>
+          </a>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.67rem", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--dust)" }}>
+            Social Promo Generator
+          </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-8 space-y-8">
-        {/* Input Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Project Details</CardTitle>
-            <CardDescription>
-              Describe your project or paste a URL. We will generate tailored
-              promotional content for each channel.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <label
-                htmlFor="project-description"
-                className="text-sm font-medium text-foreground"
-              >
+      <main className="mx-auto max-w-5xl w-full px-6 py-10 flex-1">
+        {/* Hero */}
+        <div className="text-center mb-10">
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.64rem", letterSpacing: "0.15em", textTransform: "uppercase" as const, color: "var(--cobalt)", marginBottom: "0.5rem" }}>
+            AI-Powered Content
+          </p>
+          <h1 style={{ fontFamily: "var(--font-serif, 'DM Serif Display', Georgia, serif)", fontSize: "clamp(2rem, 4vw, 2.8rem)", color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
+            Generate Your <em style={{ fontStyle: "italic", color: "var(--cobalt)" }}>Promo Content</em>
+          </h1>
+          <p style={{ fontSize: "0.88rem", color: "var(--dust)", marginTop: "0.6rem", maxWidth: "520px", margin: "0.6rem auto 0", lineHeight: 1.6 }}>
+            Describe your project and get tailored promotional content for LinkedIn, Instagram, Twitter/X, and email &mdash; all in one click.
+          </p>
+        </div>
+
+        {/* Input Card */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.62)",
+            border: "1px solid rgba(16,17,26,0.10)",
+            borderRadius: "24px",
+            padding: "1.5rem 1.75rem",
+            boxShadow: "0 16px 36px rgba(16,17,26,0.05)",
+            marginBottom: "2rem",
+          }}
+        >
+          <h3 style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--ink)", marginBottom: "0.5rem" }}>Project Details</h3>
+          <p style={{ fontSize: "0.82rem", color: "var(--dust)", lineHeight: 1.6, marginBottom: "1rem" }}>
+            Paste your project URL or describe what you built. We&apos;ll generate channel-specific promotional content.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="project-description" style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink)", display: "block", marginBottom: "0.35rem" }}>
                 Project URL or Description
               </label>
               <Textarea
                 id="project-description"
-                placeholder="e.g., https://myproject.com or describe your project in detail..."
+                placeholder="e.g., https://myproject.com — or describe your project in detail..."
                 className="min-h-[120px] resize-y"
+                style={{ background: "var(--paper)", border: "1.5px solid var(--rule)", borderRadius: "12px", fontSize: "0.85rem" }}
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label
-                  htmlFor="brand-colors"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Brand Colors{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (optional)
-                  </span>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="brand-colors" style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink)", display: "block", marginBottom: "0.35rem" }}>
+                  Brand Colors <span style={{ color: "var(--dust)", fontWeight: 400 }}>(optional)</span>
                 </label>
                 <Input
                   id="brand-colors"
                   placeholder="e.g., #1c3fdc, navy blue"
+                  style={{ background: "var(--paper)", border: "1.5px solid var(--rule)", borderRadius: "12px", fontSize: "0.85rem", height: "42px" }}
                   value={brandColors}
                   onChange={(e) => setBrandColors(e.target.value)}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
+              <div>
+                <label style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink)", display: "block", marginBottom: "0.35rem" }}>
                   Tone
                 </label>
                 <div className="flex gap-2">
                   {TONES.map((t) => (
-                    <Button
+                    <button
                       key={t}
-                      variant={tone === t ? "default" : "secondary"}
-                      size="sm"
                       onClick={() => setTone(t)}
-                      className={
-                        tone === t
-                          ? "bg-[var(--cobalt)] text-white hover:bg-[var(--cobalt)]/90"
-                          : ""
-                      }
+                      style={{
+                        flex: 1,
+                        height: "42px",
+                        borderRadius: "999px",
+                        border: tone === t ? "1.5px solid var(--cobalt)" : "1.5px solid var(--rule)",
+                        background: tone === t ? "var(--cobalt-dim)" : "var(--paper)",
+                        color: tone === t ? "var(--cobalt)" : "var(--ink)",
+                        fontSize: "0.82rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.16s ease",
+                      }}
                     >
                       {t}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -210,28 +198,24 @@ export default function Home() {
             <Button
               onClick={handleGenerate}
               disabled={isGenerating || !projectDescription.trim()}
-              className="w-full bg-[var(--cobalt)] text-white hover:bg-[var(--cobalt)]/90 h-11 text-sm font-medium"
+              style={{
+                width: "100%",
+                height: "48px",
+                borderRadius: "999px",
+                background: isGenerating || !projectDescription.trim() ? "var(--rule)" : "var(--cobalt)",
+                color: "#fff",
+                fontSize: "0.88rem",
+                fontWeight: 600,
+                border: "none",
+                cursor: isGenerating || !projectDescription.trim() ? "not-allowed" : "pointer",
+                transition: "all 0.16s ease",
+              }}
             >
               {isGenerating ? (
                 <span className="flex items-center gap-2">
-                  <svg
-                    className="h-4 w-4 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Generating...
                 </span>
@@ -239,122 +223,170 @@ export default function Home() {
                 "Generate Content"
               )}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Results Section */}
+        {/* Results */}
         {(hasContent || isGenerating) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Generated Content</CardTitle>
-              <CardDescription>
-                Click on each tab to view and copy the content for that channel.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="linkedin">
-                <TabsList className="w-full justify-start">
-                  {CHANNELS.map((ch) => (
-                    <TabsTrigger key={ch.key} value={ch.key} className="text-xs">
-                      {ch.label}
-                      {parsedContent[ch.key] && (
-                        <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--cobalt)]" />
-                      )}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.62)",
+              border: "1px solid rgba(16,17,26,0.10)",
+              borderRadius: "24px",
+              padding: "1.5rem 1.75rem",
+              boxShadow: "0 16px 36px rgba(16,17,26,0.05)",
+            }}
+          >
+            <h3 style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--ink)", marginBottom: "0.25rem" }}>Generated Content</h3>
+            <p style={{ fontSize: "0.82rem", color: "var(--dust)", lineHeight: 1.6, marginBottom: "1rem" }}>
+              Click each channel tab to view and copy your content.
+            </p>
 
-                {CHANNELS.map((ch) => (
-                  <TabsContent key={ch.key} value={ch.key}>
-                    <div className="relative mt-4">
-                      {parsedContent[ch.key] ? (
-                        <>
-                          <div className="rounded-lg border border-border bg-secondary/50 p-4">
-                            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
-                              {parsedContent[ch.key]}
-                            </pre>
-                          </div>
-                          <div className="mt-3 flex justify-end">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() =>
-                                handleCopy(ch.key, parsedContent[ch.key])
-                              }
-                              className="text-xs"
-                            >
-                              {copiedChannel === ch.key ? (
-                                <span className="flex items-center gap-1.5">
-                                  <svg
-                                    className="h-3.5 w-3.5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                  Copied!
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1.5">
-                                  <svg
-                                    className="h-3.5 w-3.5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                  >
-                                    <rect
-                                      x="9"
-                                      y="9"
-                                      width="13"
-                                      height="13"
-                                      rx="2"
-                                    />
-                                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                                  </svg>
-                                  Copy {ch.label}
-                                </span>
-                              )}
-                            </Button>
-                          </div>
-                        </>
-                      ) : isGenerating ? (
-                        <div className="space-y-3 p-4">
-                          <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-                          <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                          <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
-                          <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-                        </div>
-                      ) : (
-                        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-                          <p className="text-sm text-muted-foreground">
-                            Content for {ch.label} will appear here.
-                          </p>
-                        </div>
-                      )}
+            {/* Channel Tabs */}
+            <div style={{ display: "flex", gap: "0.35rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+              {CHANNELS.map((ch) => (
+                <button
+                  key={ch.key}
+                  onClick={() => setActiveTab(ch.key)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.45rem 0.85rem",
+                    borderRadius: "999px",
+                    border: activeTab === ch.key ? "1.5px solid var(--cobalt)" : "1.5px solid var(--rule)",
+                    background: activeTab === ch.key ? "var(--cobalt-dim)" : "transparent",
+                    color: activeTab === ch.key ? "var(--cobalt)" : "var(--dust)",
+                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.16s ease",
+                  }}
+                >
+                  <svg viewBox={ch.key === "email" ? "0 0 24 24" : "0 0 16 16"} fill="currentColor" style={{ width: "13px", height: "13px" }}>
+                    <path d={ch.icon} />
+                  </svg>
+                  {ch.label}
+                  {parsedContent[ch.key] && (
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--cobalt)" }} />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Active Content */}
+            {CHANNELS.map((ch) => {
+              if (ch.key !== activeTab) return null;
+              return (
+                <div key={ch.key}>
+                  {parsedContent[ch.key] ? (
+                    <>
+                      <div
+                        style={{
+                          background: "var(--paper)",
+                          border: "1.5px solid var(--rule)",
+                          borderRadius: "12px",
+                          padding: "1.1rem 1.2rem",
+                        }}
+                      >
+                        <pre style={{ whiteSpace: "pre-wrap", fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)", margin: 0 }}>
+                          {parsedContent[ch.key]}
+                        </pre>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          onClick={() => handleCopy(ch.key, parsedContent[ch.key])}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.32rem",
+                            background: copiedChannel === ch.key ? "#16a34a" : "var(--cobalt)",
+                            color: "#fff",
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.03em",
+                            padding: "0.36rem 0.75rem",
+                            borderRadius: "999px",
+                            border: "none",
+                            cursor: "pointer",
+                            transition: "all 0.16s ease",
+                          }}
+                        >
+                          {copiedChannel === ch.key ? (
+                            <>
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <rect x="9" y="9" width="13" height="13" rx="2" />
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                              </svg>
+                              Copy {ch.label}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  ) : isGenerating ? (
+                    <div style={{ padding: "1.1rem 1.2rem", background: "var(--paper)", borderRadius: "12px", border: "1.5px solid var(--rule)" }}>
+                      <div className="space-y-3">
+                        <div style={{ height: "14px", width: "75%", borderRadius: "6px", background: "var(--cream)" }} className="animate-pulse" />
+                        <div style={{ height: "14px", width: "100%", borderRadius: "6px", background: "var(--cream)" }} className="animate-pulse" />
+                        <div style={{ height: "14px", width: "85%", borderRadius: "6px", background: "var(--cream)" }} className="animate-pulse" />
+                        <div style={{ height: "14px", width: "65%", borderRadius: "6px", background: "var(--cream)" }} className="animate-pulse" />
+                      </div>
                     </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </CardContent>
-          </Card>
+                  ) : (
+                    <div style={{ borderRadius: "12px", border: "1.5px dashed var(--rule)", padding: "2rem", textAlign: "center" }}>
+                      <p style={{ fontSize: "0.82rem", color: "var(--dust)" }}>Content for {ch.label} will appear here.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border mt-auto">
-        <div className="mx-auto max-w-4xl px-6 py-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            Built by{" "}
-            <span className="font-medium text-foreground">DayDreamers</span>{" "}
-            &mdash; Powered by Claude
-          </p>
+      <footer style={{ borderTop: "1.5px solid var(--rule)", marginTop: "auto" }}>
+        <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+              <path fill="none" stroke="var(--dust)" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" d="M166 82c-8-4-17-6-27-6c-32 0-58 26-58 58s26 58 58 58c26 0 48-17 55-41c-7 4-16 6-25 6c-26 0-46-20-46-46c0-12 4-22 11-29c7-7 20-7 32 0z"/>
+            </svg>
+            <p style={{ fontSize: "0.72rem", color: "var(--dust)" }}>
+              Built by <span style={{ fontWeight: 600, color: "var(--ink)" }}>DayDreamers</span>
+            </p>
+          </div>
+          <a
+            href="https://www.daydreamers-academy.com"
+            target="_blank"
+            rel="noopener"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.32rem",
+              fontSize: "0.72rem",
+              fontWeight: 600,
+              color: "var(--cobalt)",
+              textDecoration: "none",
+              padding: "0.3rem 0.65rem",
+              borderRadius: "999px",
+              border: "1px solid rgba(28,63,220,0.15)",
+              background: "var(--cobalt-dim)",
+              transition: "all 0.16s ease",
+            }}
+          >
+            daydreamers-academy.com
+            <svg viewBox="0 0 16 16" fill="currentColor" style={{ width: "10px", height: "10px" }}>
+              <path d="M6 3l5 5-5 5-1.4-1.4L8.2 8 4.6 4.4z" />
+            </svg>
+          </a>
         </div>
       </footer>
     </div>
