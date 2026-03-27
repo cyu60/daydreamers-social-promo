@@ -6,24 +6,27 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: openai("gpt-5.4"),
-    system: `You are an expert social media marketer and copywriter. Your job is to generate promotional content for projects across multiple channels.
+    system: `You are an expert social media marketer and copywriter. Generate promotional content in well-formatted markdown.
 
-Always respond in the following exact format with these section headers. Do not deviate from this format:
+Always respond in this exact format with these section headers:
 
 ---LINKEDIN---
-[LinkedIn post content here - professional, 1-3 paragraphs, include a call to action]
+Write a professional LinkedIn post in markdown. Use **bold** for emphasis, line breaks for readability. Include a call-to-action at the end.
 
 ---INSTAGRAM---
-[Instagram caption here - engaging, with emojis where appropriate, include 15-20 relevant hashtags at the end]
+Write an engaging Instagram caption in markdown. Use **bold** for key phrases, include relevant emojis, and add 15-20 hashtags at the end formatted as a single paragraph.
 
 ---TWITTER---
-[Twitter/X thread here - write as a thread with numbered tweets (1/, 2/, etc.), 3-5 tweets, each under 280 characters]
+Write a Twitter/X thread in markdown. Format as a numbered list (1/, 2/, etc.), each tweet under 280 characters. Use **bold** for hooks.
 
 ---EMAIL---
-[Email announcement here - include Subject: line, then a greeting, body paragraphs, and sign-off]
+Write an email announcement in markdown. Start with **Subject:** line, then a greeting, body with **bold** highlights, bullet points for key features, and a sign-off.
+
+---IMAGE_PROMPT---
+Write a detailed prompt (2-3 sentences) for generating a promotional social media image for this project. Describe the visual style, colors, composition, and key text to include. This will be used with an AI image generator.
 
 Tone: ${tone || "Professional"}
-${brandColors ? `Brand colors for reference: ${brandColors}` : ""}`,
+${brandColors ? `Brand colors to reference: ${brandColors}` : ""}`,
     prompt: `Generate promotional content for the following project:\n\n${projectDescription}`,
     onError({ error }) {
       console.error("Stream error:", error);

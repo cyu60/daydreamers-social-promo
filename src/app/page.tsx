@@ -4,20 +4,23 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-type ChannelKey = "linkedin" | "instagram" | "twitter" | "email";
+type ChannelKey = "linkedin" | "instagram" | "twitter" | "email" | "image_prompt";
 
 const CHANNELS: { key: ChannelKey; label: string; separator: string; icon: string }[] = [
   { key: "linkedin", label: "LinkedIn", separator: "---LINKEDIN---", icon: "M0 1.8C0 .8.8 0 1.8 0h12.4C15.2 0 16 .8 16 1.8v12.4c0 1-.8 1.8-1.8 1.8H1.8C.8 16 0 15.2 0 14.2V1.8zM4.8 13.5V6.2H2.5v7.3h2.3zM3.6 5.2a1.3 1.3 0 100-2.6 1.3 1.3 0 000 2.6zM13.5 13.5V9.4c0-2.2-1.2-3.3-2.8-3.3-1.3 0-1.8.7-2.1 1.2V6.2H6.3v7.3h2.3V9.7c0-.2 0-.4.1-.5.2-.5.7-1 1.4-1 1 0 1.4.8 1.4 1.9v3.4h2.3z" },
   { key: "instagram", label: "Instagram", separator: "---INSTAGRAM---", icon: "M8 0C5.8 0 5.6.01 4.7.05 3.8.09 3.2.22 2.7.42c-.53.2-.98.48-1.42.92-.44.44-.72.89-.92 1.42-.2.5-.33 1.1-.37 2C.01 5.6 0 5.8 0 8s.01 2.4.05 3.3c.04.9.17 1.5.37 2 .2.53.48.98.92 1.42.44.44.89.72 1.42.92.5.2 1.1.33 2 .37.9.04 1.1.05 3.3.05s2.4-.01 3.3-.05c.9-.04 1.5-.17 2-.37.53-.2.98-.48 1.42-.92.44-.44.72-.89.92-1.42.2-.5.33-1.1.37-2 .04-.9.05-1.1.05-3.3s-.01-2.4-.05-3.3c-.04-.9-.17-1.5-.37-2-.2-.53-.48-.98-.92-1.42A3.9 3.9 0 0013.3.42c-.5-.2-1.1-.33-2-.37C10.4.01 10.2 0 8 0zm0 1.44c2.14 0 2.39.01 3.23.05.78.03 1.2.16 1.48.27.37.14.64.32.92.6.28.28.46.55.6.92.11.28.24.7.27 1.48.04.84.05 1.09.05 3.23s-.01 2.39-.05 3.23c-.03.78-.16 1.2-.27 1.48-.14.37-.32.64-.6.92-.28.28-.55.46-.92.6-.28.11-.7.24-1.48.27-.84.04-1.09.05-3.23.05s-2.39-.01-3.23-.05c-.78-.03-1.2-.16-1.48-.27a2.5 2.5 0 01-.92-.6 2.5 2.5 0 01-.6-.92c-.11-.28-.24-.7-.27-1.48-.04-.84-.05-1.09-.05-3.23s.01-2.39.05-3.23c.03-.78.16-1.2.27-1.48.14-.37.32-.64.6-.92.28-.28.55-.46.92-.6.28-.11.7-.24 1.48-.27.84-.04 1.09-.05 3.23-.05zM8 3.89a4.11 4.11 0 100 8.22 4.11 4.11 0 000-8.22zM8 10.67a2.67 2.67 0 110-5.34 2.67 2.67 0 010 5.34zm5.23-6.97a.96.96 0 11-1.92 0 .96.96 0 011.92 0z" },
   { key: "twitter", label: "Twitter/X", separator: "---TWITTER---", icon: "M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633z" },
   { key: "email", label: "Email", separator: "---EMAIL---", icon: "M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" },
+  { key: "image_prompt", label: "Image Prompt", separator: "---IMAGE_PROMPT---", icon: "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" },
 ];
 
 const TONES = ["Professional", "Casual", "Exciting"] as const;
 
 function parseContent(raw: string): Record<ChannelKey, string> {
-  const result: Record<ChannelKey, string> = { linkedin: "", instagram: "", twitter: "", email: "" };
+  const result: Record<ChannelKey, string> = { linkedin: "", instagram: "", twitter: "", email: "", image_prompt: "" };
   for (let i = 0; i < CHANNELS.length; i++) {
     const channel = CHANNELS[i];
     const startIdx = raw.indexOf(channel.separator);
@@ -38,6 +41,9 @@ export default function Home() {
   const [rawOutput, setRawOutput] = useState("");
   const [copiedChannel, setCopiedChannel] = useState<ChannelKey | null>(null);
   const [activeTab, setActiveTab] = useState<ChannelKey>("linkedin");
+  const [imageHtml, setImageHtml] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imagePlatform, setImagePlatform] = useState("LinkedIn");
 
   const parsedContent = parseContent(rawOutput);
 
@@ -76,6 +82,30 @@ export default function Home() {
     setCopiedChannel(channel);
     setTimeout(() => setCopiedChannel(null), 2000);
   }, []);
+
+  const handleGenerateImage = useCallback(async () => {
+    setImageLoading(true);
+    setImageHtml("");
+    try {
+      const response = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectName: projectDescription.split('\n')[0].substring(0, 50),
+          projectDescription,
+          brandColors,
+          tone,
+          platform: imagePlatform,
+        }),
+      });
+      const data = await response.json();
+      setImageHtml(data.html);
+    } catch (error) {
+      console.error("Image generation error:", error);
+    } finally {
+      setImageLoading(false);
+    }
+  }, [projectDescription, brandColors, tone, imagePlatform]);
 
   const hasContent = CHANNELS.some((ch) => parsedContent[ch.key].length > 0);
 
@@ -263,7 +293,7 @@ export default function Home() {
                     transition: "all 0.16s ease",
                   }}
                 >
-                  <svg viewBox={ch.key === "email" ? "0 0 24 24" : "0 0 16 16"} fill="currentColor" style={{ width: "13px", height: "13px" }}>
+                  <svg viewBox={ch.key === "email" || ch.key === "image_prompt" ? "0 0 24 24" : "0 0 16 16"} fill="currentColor" style={{ width: "13px", height: "13px" }}>
                     <path d={ch.icon} />
                   </svg>
                   {ch.label}
@@ -289,9 +319,11 @@ export default function Home() {
                           padding: "1.1rem 1.2rem",
                         }}
                       >
-                        <pre style={{ whiteSpace: "pre-wrap", fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)", margin: 0 }}>
-                          {parsedContent[ch.key]}
-                        </pre>
+                        <div className="prose prose-sm max-w-none" style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)" }}>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {parsedContent[ch.key]}
+                          </ReactMarkdown>
+                        </div>
                       </div>
                       <div className="mt-3 flex justify-end">
                         <button
@@ -330,6 +362,85 @@ export default function Home() {
                           )}
                         </button>
                       </div>
+                      {ch.key === "image_prompt" && (
+                        <div style={{ marginTop: "1rem", padding: "1rem", background: "var(--cream)", borderRadius: "12px", border: "1.5px solid var(--rule)" }}>
+                          <h4 style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: "0.5rem" }}>Generate Image Template</h4>
+                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+                            {["LinkedIn", "Instagram", "Twitter"].map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => setImagePlatform(p)}
+                                style={{
+                                  padding: "0.35rem 0.75rem",
+                                  borderRadius: "999px",
+                                  border: imagePlatform === p ? "1.5px solid var(--cobalt)" : "1.5px solid var(--rule)",
+                                  background: imagePlatform === p ? "var(--cobalt-dim)" : "transparent",
+                                  color: imagePlatform === p ? "var(--cobalt)" : "var(--dust)",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {p}
+                              </button>
+                            ))}
+                            <button
+                              onClick={handleGenerateImage}
+                              disabled={imageLoading}
+                              style={{
+                                padding: "0.35rem 0.85rem",
+                                borderRadius: "999px",
+                                border: "none",
+                                background: "var(--cobalt)",
+                                color: "#fff",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                cursor: imageLoading ? "not-allowed" : "pointer",
+                                opacity: imageLoading ? 0.6 : 1,
+                              }}
+                            >
+                              {imageLoading ? "Generating..." : "Generate Template"}
+                            </button>
+                          </div>
+                          {imageHtml && (
+                            <>
+                              <div style={{
+                                border: "1.5px solid var(--rule)",
+                                borderRadius: "8px",
+                                overflow: "hidden",
+                                background: "#fff",
+                                position: "relative",
+                              }}>
+                                <iframe
+                                  srcDoc={imageHtml}
+                                  style={{
+                                    width: imagePlatform === "Instagram" ? "1080px" : "1200px",
+                                    height: imagePlatform === "LinkedIn" ? "627px" : imagePlatform === "Instagram" ? "1080px" : "675px",
+                                    border: "none",
+                                    transform: "scale(0.4)",
+                                    transformOrigin: "top left",
+                                  }}
+                                  sandbox="allow-scripts"
+                                  title="Image preview"
+                                />
+                              </div>
+                              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", justifyContent: "flex-end" }}>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(imageHtml); }}
+                                  style={{
+                                    display: "inline-flex", alignItems: "center", gap: "0.32rem",
+                                    background: "var(--cobalt)", color: "#fff", fontSize: "0.72rem",
+                                    fontWeight: 600, padding: "0.36rem 0.75rem", borderRadius: "999px",
+                                    border: "none", cursor: "pointer",
+                                  }}
+                                >
+                                  Copy HTML
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </>
                   ) : isGenerating ? (
                     <div style={{ padding: "1.1rem 1.2rem", background: "var(--paper)", borderRadius: "12px", border: "1.5px solid var(--rule)" }}>
