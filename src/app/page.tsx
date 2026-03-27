@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { AuthBanner } from "@/components/auth-guard";
+import { insforge } from "@/lib/insforge";
 
 type ChannelKey = "linkedin" | "instagram" | "twitter" | "email" | "image_prompt";
 
@@ -33,6 +35,38 @@ function parseContent(raw: string): Record<ChannelKey, string> {
   return result;
 }
 
+function IframeScaler({ html, nativeWidth, nativeHeight }: { html: string; nativeWidth: number; nativeHeight: number }) {
+  const [scale, setScale] = useState(1);
+  const wrapRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const containerWidth = entry.contentRect.width;
+      setScale(containerWidth / nativeWidth);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [nativeWidth]);
+
+  const scaledHeight = nativeHeight * scale;
+
+  return (
+    <div ref={wrapRef} className="iframe-scaler-wrap" style={{ height: scaledHeight }}>
+      <div className="iframe-scaler-inner" style={{ height: scaledHeight }}>
+        <iframe
+          srcDoc={html}
+          style={{
+            width: nativeWidth,
+            height: nativeHeight,
+            transform: `scale(${scale})`,
+          }}
+          sandbox="allow-scripts"
+          title="Image preview"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [projectDescription, setProjectDescription] = useState("");
   const [brandColors, setBrandColors] = useState("");
@@ -51,6 +85,7 @@ export default function Home() {
     if (!projectDescription.trim()) return;
     setIsGenerating(true);
     setRawOutput("");
+    let accumulated = "";
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -61,7 +96,6 @@ export default function Home() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body");
       const decoder = new TextDecoder();
-      let accumulated = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -73,6 +107,25 @@ export default function Home() {
       setRawOutput("Error generating content. Please check your API key and try again.");
     } finally {
       setIsGenerating(false);
+      // Save generation if user is logged in
+      try {
+        const { data } = await insforge.auth.getCurrentUser();
+        if (data?.user) {
+          const parsed = parseContent(accumulated);
+          await insforge.database.from("generations").insert({
+            user_id: data.user.id,
+            project_description: projectDescription,
+            tone,
+            brand_colors: brandColors,
+            linkedin_content: parsed.linkedin,
+            instagram_content: parsed.instagram,
+            twitter_content: parsed.twitter,
+            email_content: parsed.email,
+          });
+        }
+      } catch {
+        // silently fail if not logged in
+      }
     }
   }, [projectDescription, brandColors, tone]);
 
@@ -111,6 +164,40 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <style>{`
+        @media (max-width: 480px) {
+          .header-label { display: none; }
+          .main-pad { padding-left: 1rem !important; padding-right: 1rem !important; padding-top: 1.5rem !important; }
+          .card-pad { padding: 1rem !important; }
+          .footer-inner { flex-direction: column !important; align-items: flex-start !important; gap: 0.75rem !important; }
+          .tone-btn { font-size: 0.72rem !important; padding: 0 0.5rem !important; }
+          .prose h1 { font-size: 1.2em !important; }
+          .prose h2 { font-size: 1.1em !important; }
+          .prose h3 { font-size: 1em !important; }
+        }
+        .iframe-scaler-wrap {
+          position: relative;
+          width: 100%;
+          overflow: hidden;
+          border-radius: 8px;
+          border: 1.5px solid var(--rule);
+          background: #fff;
+        }
+        .iframe-scaler-inner {
+          position: relative;
+          width: 100%;
+        }
+        .iframe-scaler-inner iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          transform-origin: top left;
+          border: none;
+        }
+      `}</style>
+
+      <AuthBanner />
+
       {/* Header */}
       <header
         style={{
@@ -122,8 +209,8 @@ export default function Home() {
           zIndex: 50,
         }}
       >
-        <div className="mx-auto max-w-5xl px-6 h-[52px] flex items-center justify-between">
-          <a href="https://www.daydreamers-academy.com" target="_blank" rel="noopener" className="flex items-center gap-2.5 no-underline">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 h-[52px] flex items-center justify-between gap-3">
+          <a href="https://www.daydreamers-academy.com" target="_blank" rel="noopener" className="flex items-center gap-2.5 no-underline flex-shrink-0">
             <svg className="w-7 h-7 flex-shrink-0" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
               <path fill="none" stroke="#1c3fdc" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" d="M166 82c-8-4-17-6-27-6c-32 0-58 26-58 58s26 58 58 58c26 0 48-17 55-41c-7 4-16 6-25 6c-26 0-46-20-46-46c0-12 4-22 11-29c7-7 20-7 32 0z"/>
             </svg>
@@ -131,19 +218,19 @@ export default function Home() {
               DayDreamers
             </span>
           </a>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.67rem", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--dust)" }}>
+          <span className="header-label" style={{ fontFamily: "var(--font-mono)", fontSize: "0.67rem", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--dust)", textAlign: "right" as const }}>
             Social Promo Generator
           </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl w-full px-6 py-10 flex-1">
+      <main className="main-pad mx-auto max-w-5xl w-full px-4 sm:px-6 py-6 sm:py-10 flex-1">
         {/* Hero */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8 sm:mb-10">
           <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.64rem", letterSpacing: "0.15em", textTransform: "uppercase" as const, color: "var(--cobalt)", marginBottom: "0.5rem" }}>
             AI-Powered Content
           </p>
-          <h1 style={{ fontFamily: "var(--font-serif, 'DM Serif Display', Georgia, serif)", fontSize: "clamp(2rem, 4vw, 2.8rem)", color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
+          <h1 style={{ fontFamily: "var(--font-serif, 'DM Serif Display', Georgia, serif)", fontSize: "clamp(1.5rem, 5vw, 2.8rem)", color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
             Generate Your <em style={{ fontStyle: "italic", color: "var(--cobalt)" }}>Promo Content</em>
           </h1>
           <p style={{ fontSize: "0.88rem", color: "var(--dust)", marginTop: "0.6rem", maxWidth: "520px", margin: "0.6rem auto 0", lineHeight: 1.6 }}>
@@ -153,6 +240,7 @@ export default function Home() {
 
         {/* Input Card */}
         <div
+          className="card-pad"
           style={{
             background: "rgba(255,255,255,0.62)",
             border: "1px solid rgba(16,17,26,0.10)",
@@ -200,13 +288,15 @@ export default function Home() {
                 <label style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink)", display: "block", marginBottom: "0.35rem" }}>
                   Tone
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-2" style={{ flexWrap: "wrap" }}>
                   {TONES.map((t) => (
                     <button
                       key={t}
+                      className="tone-btn"
                       onClick={() => setTone(t)}
                       style={{
-                        flex: 1,
+                        flex: "1 1 0",
+                        minWidth: 0,
                         height: "42px",
                         borderRadius: "999px",
                         border: tone === t ? "1.5px solid var(--cobalt)" : "1.5px solid var(--rule)",
@@ -216,6 +306,9 @@ export default function Home() {
                         fontWeight: 600,
                         cursor: "pointer",
                         transition: "all 0.16s ease",
+                        whiteSpace: "nowrap" as const,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
                       {t}
@@ -259,6 +352,7 @@ export default function Home() {
         {/* Results */}
         {(hasContent || isGenerating) && (
           <div
+            className="card-pad"
             style={{
               background: "rgba(255,255,255,0.62)",
               border: "1px solid rgba(16,17,26,0.10)",
@@ -316,51 +410,67 @@ export default function Home() {
                           background: "var(--paper)",
                           border: "1.5px solid var(--rule)",
                           borderRadius: "12px",
-                          padding: "1.1rem 1.2rem",
+                          overflow: "hidden",
                         }}
                       >
-                        <div className="prose prose-sm max-w-none" style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)" }}>
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {parsedContent[ch.key]}
-                          </ReactMarkdown>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          onClick={() => handleCopy(ch.key, parsedContent[ch.key])}
+                        {/* Card header with channel name and copy button */}
+                        <div
                           style={{
-                            display: "inline-flex",
+                            display: "flex",
                             alignItems: "center",
-                            gap: "0.32rem",
-                            background: copiedChannel === ch.key ? "#16a34a" : "var(--cobalt)",
-                            color: "#fff",
-                            fontSize: "0.72rem",
-                            fontWeight: 600,
-                            letterSpacing: "0.03em",
-                            padding: "0.36rem 0.75rem",
-                            borderRadius: "999px",
-                            border: "none",
-                            cursor: "pointer",
-                            transition: "all 0.16s ease",
+                            justifyContent: "space-between",
+                            padding: "0.65rem 1.2rem",
+                            borderBottom: "1px solid var(--rule)",
+                            background: "rgba(255,255,255,0.5)",
                           }}
                         >
-                          {copiedChannel === ch.key ? (
-                            <>
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <rect x="9" y="9" width="13" height="13" rx="2" />
-                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                              </svg>
-                              Copy {ch.label}
-                            </>
-                          )}
-                        </button>
+                          <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--dust)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                            {ch.label}
+                          </span>
+                          <button
+                            onClick={() => handleCopy(ch.key, parsedContent[ch.key])}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.4rem",
+                              background: copiedChannel === ch.key ? "#16a34a" : "var(--cobalt)",
+                              color: "#fff",
+                              fontSize: "0.78rem",
+                              fontWeight: 600,
+                              letterSpacing: "0.03em",
+                              padding: "0.42rem 1rem",
+                              borderRadius: "999px",
+                              border: "none",
+                              cursor: "pointer",
+                              transition: "all 0.16s ease",
+                            }}
+                          >
+                            {copiedChannel === ch.key ? (
+                              <>
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                                </svg>
+                                Copy {ch.label}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        {/* Markdown content */}
+                        <div style={{ padding: "1.1rem 1.2rem" }}>
+                          <div className="prose prose-sm max-w-none" style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)" }}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {parsedContent[ch.key]}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
                       </div>
                       {ch.key === "image_prompt" && (
                         <div style={{ marginTop: "1rem", padding: "1rem", background: "var(--cream)", borderRadius: "12px", border: "1.5px solid var(--rule)" }}>
@@ -404,26 +514,11 @@ export default function Home() {
                           </div>
                           {imageHtml && (
                             <>
-                              <div style={{
-                                border: "1.5px solid var(--rule)",
-                                borderRadius: "8px",
-                                overflow: "hidden",
-                                background: "#fff",
-                                position: "relative",
-                              }}>
-                                <iframe
-                                  srcDoc={imageHtml}
-                                  style={{
-                                    width: imagePlatform === "Instagram" ? "1080px" : "1200px",
-                                    height: imagePlatform === "LinkedIn" ? "627px" : imagePlatform === "Instagram" ? "1080px" : "675px",
-                                    border: "none",
-                                    transform: "scale(0.4)",
-                                    transformOrigin: "top left",
-                                  }}
-                                  sandbox="allow-scripts"
-                                  title="Image preview"
-                                />
-                              </div>
+                              <IframeScaler
+                                html={imageHtml}
+                                nativeWidth={imagePlatform === "Instagram" ? 1080 : 1200}
+                                nativeHeight={imagePlatform === "LinkedIn" ? 627 : imagePlatform === "Instagram" ? 1080 : 675}
+                              />
                               <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", justifyContent: "flex-end" }}>
                                 <button
                                   onClick={() => { navigator.clipboard.writeText(imageHtml); }}
@@ -465,7 +560,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer style={{ borderTop: "1.5px solid var(--rule)", marginTop: "auto" }}>
-        <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
+        <div className="footer-inner mx-auto max-w-5xl px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
               <path fill="none" stroke="var(--dust)" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" d="M166 82c-8-4-17-6-27-6c-32 0-58 26-58 58s26 58 58 58c26 0 48-17 55-41c-7 4-16 6-25 6c-26 0-46-20-46-46c0-12 4-22 11-29c7-7 20-7 32 0z"/>
