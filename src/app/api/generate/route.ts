@@ -2,7 +2,12 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 export async function POST(req: Request) {
-  const { projectDescription, brandColors, tone } = await req.json();
+  const { projectDescription, brandColors, tone, inspirationPosts } = await req.json();
+
+  let inspirationSection = "";
+  if (inspirationPosts && inspirationPosts.length > 0) {
+    inspirationSection = `\n\nHere are example posts from influencers the user admires. Match their style, tone, and formatting patterns:\n\n${inspirationPosts.join("\n\n---\n\n")}`;
+  }
 
   const result = streamText({
     model: openai("gpt-5.4"),
@@ -26,7 +31,7 @@ Write an email announcement in markdown. Start with **Subject:** line, then a gr
 Write a detailed prompt (2-3 sentences) for generating a promotional social media image for this project. Describe the visual style, colors, composition, and key text to include. This will be used with an AI image generator.
 
 Tone: ${tone || "Professional"}
-${brandColors ? `Brand colors to reference: ${brandColors}` : ""}`,
+${brandColors ? `Brand colors to reference: ${brandColors}` : ""}${inspirationSection}`,
     prompt: `Generate promotional content for the following project:\n\n${projectDescription}`,
     onError({ error }) {
       console.error("Stream error:", error);

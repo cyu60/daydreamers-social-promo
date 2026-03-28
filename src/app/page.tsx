@@ -84,6 +84,20 @@ export default function Home() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [canPublish, setCanPublish] = useState(false);
 
+  // Inspiration state (localStorage-backed)
+  type Inspiration = { id: string; name: string; linkedin_url: string; sample_posts: string[] };
+  const [inspirationOpen, setInspirationOpen] = useState(false);
+  const [inspirations, setInspirations] = useState<Inspiration[]>([]);
+  const [newInfluencerName, setNewInfluencerName] = useState("");
+  const [newInfluencerUrl, setNewInfluencerUrl] = useState("");
+  const [editingPostsId, setEditingPostsId] = useState<string | null>(null);
+  const [editingPostsText, setEditingPostsText] = useState("");
+
+  const saveInspirations = useCallback((items: Inspiration[]) => {
+    setInspirations(items);
+    localStorage.setItem("dd_inspirations", JSON.stringify(items));
+  }, []);
+
   useEffect(() => {
     insforge.auth.getCurrentUser().then((result) => {
       const user = result.data?.user;
@@ -91,7 +105,48 @@ export default function Home() {
       const email = (user as { email?: string })?.email;
       setCanPublish(email === "chinatchinat123@gmail.com");
     }).catch(() => {});
+    // Load inspirations from localStorage
+    try {
+      const stored = localStorage.getItem("dd_inspirations");
+      if (stored) setInspirations(JSON.parse(stored));
+    } catch { /* ignore */ }
   }, []);
+
+  const handleAddInfluencer = useCallback(() => {
+    if (!newInfluencerName.trim()) return;
+    const item: Inspiration = {
+      id: crypto.randomUUID(),
+      name: newInfluencerName.trim(),
+      linkedin_url: newInfluencerUrl.trim(),
+      sample_posts: [],
+    };
+    saveInspirations([...inspirations, item]);
+    setNewInfluencerName("");
+    setNewInfluencerUrl("");
+    // Auto-open paste for the new influencer
+    setEditingPostsId(item.id);
+    setEditingPostsText("");
+  }, [newInfluencerName, newInfluencerUrl, inspirations, saveInspirations]);
+
+  const handleRemoveInfluencer = useCallback((id: string) => {
+    saveInspirations(inspirations.filter((i) => i.id !== id));
+  }, [inspirations, saveInspirations]);
+
+  const handleSavePosts = useCallback((id: string) => {
+    const posts = editingPostsText
+      .split("\n---\n")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    saveInspirations(
+      inspirations.map((i) => (i.id === id ? { ...i, sample_posts: posts } : i))
+    );
+    setEditingPostsId(null);
+    setEditingPostsText("");
+  }, [editingPostsText, inspirations, saveInspirations]);
+
+  const getInspirationPosts = useCallback((): string[] => {
+    return inspirations.flatMap((i) => i.sample_posts.filter((p) => p.length > 0));
+  }, [inspirations]);
 
   const parsedContent = parseContent(rawOutput);
 
@@ -110,7 +165,7 @@ export default function Home() {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectDescription, brandColors, tone }),
+        body: JSON.stringify({ projectDescription, brandColors, tone, inspirationPosts: getInspirationPosts() }),
       });
       if (!response.ok) throw new Error("Failed to generate content");
       const reader = response.body?.getReader();
@@ -147,7 +202,7 @@ export default function Home() {
         // silently fail if not logged in
       }
     }
-  }, [projectDescription, brandColors, tone]);
+  }, [projectDescription, brandColors, tone, getInspirationPosts]);
 
   const handlePost = useCallback(async (platform: "linkedin" | "x") => {
     const channelKey: ChannelKey = platform === "x" ? "twitter" : "linkedin";
@@ -368,6 +423,276 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {/* Inspiration Sources — collapsible */}
+            {isSignedIn && (
+              <div
+                style={{
+                  border: "1.5px solid var(--rule)",
+                  borderRadius: "14px",
+                  background: "var(--paper)",
+                  overflow: "hidden",
+                }}
+              >
+                <button
+                  onClick={() => setInspirationOpen(!inspirationOpen)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0.65rem 1rem",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--ink)",
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <span style={{ color: "var(--cobalt)", fontSize: "0.9rem" }}>&#10022;</span>
+                    Inspiration Sources
+                    {inspirations.length > 0 && (
+                      <span
+                        style={{
+                          fontSize: "0.68rem",
+                          background: "var(--cobalt-dim)",
+                          color: "var(--cobalt)",
+                          padding: "0.1rem 0.45rem",
+                          borderRadius: "999px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {inspirations.length}
+                      </span>
+                    )}
+                  </span>
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="var(--dust)"
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      transform: inspirationOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 0.2s ease",
+                    }}
+                  >
+                    <path d="M4.6 5.4L8 8.8l3.4-3.4L13 6.8l-5 5-5-5z" />
+                  </svg>
+                </button>
+
+                {inspirationOpen && (
+                  <div style={{ padding: "0 1rem 1rem", borderTop: "1px solid var(--rule)" }}>
+                    <p style={{ fontSize: "0.75rem", color: "var(--dust)", lineHeight: 1.5, margin: "0.65rem 0 0.75rem" }}>
+                      Add influencers whose writing style you admire. Their posts will guide the AI&apos;s tone and formatting.
+                    </p>
+
+                    {/* List of influencers */}
+                    {inspirations.map((insp) => {
+                      const posts = insp.sample_posts;
+                      return (
+                        <div
+                          key={insp.id}
+                          style={{
+                            border: "1px solid var(--rule)",
+                            borderRadius: "10px",
+                            padding: "0.6rem 0.8rem",
+                            marginBottom: "0.5rem",
+                            background: "rgba(255,255,255,0.5)",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink)" }}>
+                                {insp.name}
+                              </span>
+                              {insp.linkedin_url && (
+                                <a
+                                  href={insp.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener"
+                                  style={{
+                                    fontSize: "0.7rem",
+                                    color: "var(--cobalt)",
+                                    marginLeft: "0.4rem",
+                                    textDecoration: "none",
+                                  }}
+                                >
+                                  LinkedIn &rarr;
+                                </a>
+                              )}
+                              {posts.length > 0 && (
+                                <span style={{ fontSize: "0.68rem", color: "var(--dust)", marginLeft: "0.4rem" }}>
+                                  {posts.length} post{posts.length !== 1 ? "s" : ""}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", gap: "0.3rem", flexShrink: 0 }}>
+                              <button
+                                onClick={() => {
+                                  if (editingPostsId === insp.id) {
+                                    setEditingPostsId(null);
+                                  } else {
+                                    setEditingPostsId(insp.id);
+                                    setEditingPostsText(posts.join("\n---\n"));
+                                  }
+                                }}
+                                style={{
+                                  fontSize: "0.68rem",
+                                  fontWeight: 600,
+                                  padding: "0.25rem 0.55rem",
+                                  borderRadius: "999px",
+                                  border: editingPostsId === insp.id ? "1.5px solid var(--cobalt)" : "1.5px solid var(--rule)",
+                                  background: editingPostsId === insp.id ? "var(--cobalt-dim)" : "var(--paper)",
+                                  color: editingPostsId === insp.id ? "var(--cobalt)" : "var(--dust)",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Paste
+                              </button>
+                              <button
+                                onClick={() => handleRemoveInfluencer(insp.id)}
+                                style={{
+                                  fontSize: "0.68rem",
+                                  fontWeight: 600,
+                                  padding: "0.25rem 0.55rem",
+                                  borderRadius: "999px",
+                                  border: "1.5px solid var(--rule)",
+                                  background: "var(--paper)",
+                                  color: "var(--dust)",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Truncated posts preview */}
+                          {posts.length > 0 && editingPostsId !== insp.id && (
+                            <p style={{ fontSize: "0.72rem", color: "var(--dust)", marginTop: "0.35rem", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                              {posts[0].slice(0, 120)}{posts[0].length > 120 ? "..." : ""}
+                            </p>
+                          )}
+
+                          {/* Paste / Edit posts textarea */}
+                          {editingPostsId === insp.id && (
+                            <div style={{ marginTop: "0.5rem" }}>
+                              <textarea
+                                value={editingPostsText}
+                                onChange={(e) => setEditingPostsText(e.target.value)}
+                                placeholder={"Paste example posts here.\nSeparate multiple posts with a line containing only ---"}
+                                style={{
+                                  width: "100%",
+                                  minHeight: "100px",
+                                  fontSize: "0.78rem",
+                                  lineHeight: 1.6,
+                                  padding: "0.6rem",
+                                  borderRadius: "8px",
+                                  border: "1.5px solid var(--rule)",
+                                  background: "var(--paper)",
+                                  color: "var(--ink)",
+                                  resize: "vertical",
+                                  fontFamily: "var(--font-sans)",
+                                }}
+                              />
+                              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.3rem", marginTop: "0.35rem" }}>
+                                <button
+                                  onClick={() => { setEditingPostsId(null); setEditingPostsText(""); }}
+                                  style={{
+                                    fontSize: "0.68rem",
+                                    fontWeight: 600,
+                                    padding: "0.25rem 0.6rem",
+                                    borderRadius: "999px",
+                                    border: "1.5px solid var(--rule)",
+                                    background: "var(--paper)",
+                                    color: "var(--dust)",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleSavePosts(insp.id)}
+                                  style={{
+                                    fontSize: "0.68rem",
+                                    fontWeight: 600,
+                                    padding: "0.25rem 0.6rem",
+                                    borderRadius: "999px",
+                                    border: "none",
+                                    background: "var(--cobalt)",
+                                    color: "#fff",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Save Posts
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Add influencer form */}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.4rem",
+                        flexWrap: "wrap",
+                        marginTop: inspirations.length > 0 ? "0.5rem" : 0,
+                      }}
+                    >
+                      <Input
+                        placeholder="Name"
+                        value={newInfluencerName}
+                        onChange={(e) => setNewInfluencerName(e.target.value)}
+                        style={{
+                          flex: "1 1 120px",
+                          height: "36px",
+                          fontSize: "0.78rem",
+                          borderRadius: "999px",
+                          border: "1.5px solid var(--rule)",
+                          background: "rgba(255,255,255,0.6)",
+                        }}
+                      />
+                      <Input
+                        placeholder="LinkedIn URL (optional)"
+                        value={newInfluencerUrl}
+                        onChange={(e) => setNewInfluencerUrl(e.target.value)}
+                        style={{
+                          flex: "2 1 180px",
+                          height: "36px",
+                          fontSize: "0.78rem",
+                          borderRadius: "999px",
+                          border: "1.5px solid var(--rule)",
+                          background: "rgba(255,255,255,0.6)",
+                        }}
+                      />
+                      <button
+                        onClick={handleAddInfluencer}
+                        disabled={!newInfluencerName.trim()}
+                        style={{
+                          height: "36px",
+                          padding: "0 0.85rem",
+                          borderRadius: "999px",
+                          border: "none",
+                          background: false || !newInfluencerName.trim() ? "var(--rule)" : "var(--cobalt)",
+                          color: "#fff",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          cursor: false || !newInfluencerName.trim() ? "not-allowed" : "pointer",
+                          whiteSpace: "nowrap" as const,
+                        }}
+                      >
+                        {false ? "Adding..." : "+ Add"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <Button
               onClick={handleGenerate}
