@@ -16,8 +16,9 @@ export async function POST(req: Request) {
 CRITICAL FORMATTING RULES:
 - NEVER use markdown syntax. No #, ##, ###, *, **, ***, \`, \`\`\`, >, -, or any markdown.
 - For LinkedIn and Twitter/X: use Unicode bold characters for emphasis. To make text bold, use the Unicode Mathematical Sans-Serif Bold alphabet (U+1D5D4–U+1D607). For example: "𝗧𝗵𝗶𝘀 𝗶𝘀 𝗯𝗼𝗹𝗱" not "**This is bold**".
-- For bullet points, use the actual bullet character • or emoji ▸ — not markdown dashes.
-- Use blank lines between paragraphs for readability.
+- For bullet points, use the actual bullet character • or emoji ▸ — not markdown dashes. EACH BULLET MUST BE ON ITS OWN LINE with a line break before it. Never put multiple bullets on the same line.
+- Use blank lines between paragraphs and sections for readability.
+- When listing items, always use one item per line with a newline character between each.
 - Use emojis naturally where appropriate (🚀, 💡, ✅, 🔗, etc.)
 - The output must look perfect when pasted directly into LinkedIn, Twitter/X, Instagram, or an email client with ZERO editing needed.
 
