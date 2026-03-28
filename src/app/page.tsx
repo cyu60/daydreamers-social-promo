@@ -1061,10 +1061,8 @@ export default function Home() {
                               }}
                             />
                           ) : (
-                            <div className="prose prose-sm max-w-none" style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)" }}>
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {displayText}
-                              </ReactMarkdown>
+                            <div style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                              {displayText}
                             </div>
                           )}
                         </div>

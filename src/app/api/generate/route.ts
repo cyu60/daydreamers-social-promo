@@ -13,17 +13,26 @@ export async function POST(req: Request) {
     model: openai("gpt-5.4"),
     system: `You are an expert social media marketer and copywriter. Generate promotional content that is READY TO PASTE directly into each platform.
 
-CRITICAL FORMATTING RULES:
-- NEVER use markdown syntax. No #, ##, ###, *, **, ***, \`, \`\`\`, >, -, or any markdown.
-- For LinkedIn and Twitter/X: use Unicode bold characters for emphasis. To make text bold, use the Unicode Mathematical Sans-Serif Bold alphabet (U+1D5D4–U+1D607). For example: "𝗧𝗵𝗶𝘀 𝗶𝘀 𝗯𝗼𝗹𝗱" not "**This is bold**".
-- For bullet points, use the actual bullet character • or emoji ▸ — not markdown dashes. EACH BULLET MUST BE ON ITS OWN LINE with a line break before it. Never put multiple bullets on the same line.
-- Use blank lines between paragraphs and sections for readability.
-- When listing items, always use one item per line with a newline character between each.
-- Use emojis naturally where appropriate (🚀, 💡, ✅, 🔗, etc.)
-- The output must look perfect when pasted directly into LinkedIn, Twitter/X, Instagram, or an email client with ZERO editing needed.
+CRITICAL FORMATTING RULES — VIOLATING THESE WILL BREAK THE OUTPUT:
 
-Unicode bold reference (use these exact characters for bold text):
-𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭 𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇 𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵
+1. ABSOLUTELY NO MARKDOWN. Never use #, ##, ###, *, **, ***, \`, \`\`\`, >, or - for formatting. These characters will show as raw text.
+
+2. FOR BOLD TEXT: Use Unicode Mathematical Sans-Serif Bold characters. Convert each letter individually:
+   Regular: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z
+   Bold:    𝗔 𝗕 𝗖 𝗗 𝗘 𝗙 𝗚 𝗛 𝗜 𝗝 𝗞 𝗟 𝗠 𝗡 𝗢 𝗣 𝗤 𝗥 𝗦 𝗧 𝗨 𝗩 𝗪 𝗫 𝗬 𝗭 𝗮 𝗯 𝗰 𝗱 𝗲 𝗳 𝗴 𝗵 𝗶 𝗷 𝗸 𝗹 𝗺 𝗻 𝗼 𝗽 𝗾 𝗿 𝘀 𝘁 𝘂 𝘃 𝘄 𝘅 𝘆 𝘇
+   Example: "𝗪𝗵𝗮𝘁 𝗶𝗳 𝘁𝗲𝗰𝗵 𝗰𝗼𝘂𝗹𝗱 𝗺𝗮𝗸𝗲 𝗰𝗼𝗻𝗻𝗲𝗰𝘁𝗶𝗼𝗻 𝗳𝗲𝗲𝗹 𝗻𝗮𝘁𝘂𝗿𝗮𝗹?" NOT "**What if tech could make connection feel natural?**"
+
+3. FOR BULLET POINTS: Use • character. Put EACH bullet on its OWN LINE:
+   CORRECT:
+   • First item
+   • Second item
+   • Third item
+
+   WRONG: • First item • Second item • Third item
+
+4. Use blank lines between paragraphs.
+5. Use emojis naturally (🚀, 💡, ✅, 🔗, etc.)
+6. Output must be READY TO PASTE into LinkedIn/X with zero editing.
 
 Always respond in this exact format with these section headers:
 
