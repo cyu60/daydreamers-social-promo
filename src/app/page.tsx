@@ -82,10 +82,14 @@ export default function Home() {
   const [isPosting, setIsPosting] = useState<Record<string, boolean>>({});
   const [postResults, setPostResults] = useState<Record<string, { success: boolean; url?: string; error?: string }>>({});
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [canPublish, setCanPublish] = useState(false);
 
   useEffect(() => {
     insforge.auth.getCurrentUser().then((result) => {
-      setIsSignedIn(!!result.data?.user);
+      const user = result.data?.user;
+      setIsSignedIn(!!user);
+      const email = (user as { email?: string })?.email;
+      setCanPublish(email === "chinatchinat123@gmail.com");
     }).catch(() => {});
   }, []);
 
@@ -535,7 +539,7 @@ export default function Home() {
                               {copiedChannel === ch.key ? "Copied!" : "Copy"}
                             </button>
                             {/* Publish button (LinkedIn & Twitter only, signed in only) */}
-                            {isPostable && isSignedIn && (
+                            {isPostable && canPublish && (
                               <button
                                 onClick={() => handlePost(postPlatform as "linkedin" | "x")}
                                 disabled={isPosting[postPlatform]}
