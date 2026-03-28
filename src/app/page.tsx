@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -78,13 +78,29 @@ export default function Home() {
   const [imageHtml, setImageHtml] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
   const [imagePlatform, setImagePlatform] = useState("LinkedIn");
+  const [editedContent, setEditedContent] = useState<Partial<Record<ChannelKey, string>>>({});
+  const [isPosting, setIsPosting] = useState<Record<string, boolean>>({});
+  const [postResults, setPostResults] = useState<Record<string, { success: boolean; url?: string; error?: string }>>({});
+  const [isSignedIn, setIsSignedIn] = useState(false);
+
+  useEffect(() => {
+    insforge.auth.getCurrentUser().then((result) => {
+      setIsSignedIn(!!result.data?.user);
+    }).catch(() => {});
+  }, []);
 
   const parsedContent = parseContent(rawOutput);
+
+  const getDisplayContent = (key: ChannelKey) => {
+    return editedContent[key] ?? parsedContent[key];
+  };
 
   const handleGenerate = useCallback(async () => {
     if (!projectDescription.trim()) return;
     setIsGenerating(true);
     setRawOutput("");
+    setEditedContent({});
+    setPostResults({});
     let accumulated = "";
     try {
       const response = await fetch("/api/generate", {
@@ -128,6 +144,37 @@ export default function Home() {
       }
     }
   }, [projectDescription, brandColors, tone]);
+
+  const handlePost = useCallback(async (platform: "linkedin" | "x") => {
+    const channelKey: ChannelKey = platform === "x" ? "twitter" : "linkedin";
+    const text = getDisplayContent(channelKey);
+    if (!text) return;
+
+    setIsPosting((prev) => ({ ...prev, [platform]: true }));
+    setPostResults((prev) => {
+      const next = { ...prev };
+      delete next[platform];
+      return next;
+    });
+
+    try {
+      const response = await fetch("/api/post-social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, platforms: [platform] }),
+      });
+      const data = await response.json();
+      if (data.success && data.results?.[platform]) {
+        setPostResults((prev) => ({ ...prev, [platform]: data.results[platform] }));
+      } else {
+        setPostResults((prev) => ({ ...prev, [platform]: { success: false, error: data.error || "Failed to post" } }));
+      }
+    } catch {
+      setPostResults((prev) => ({ ...prev, [platform]: { success: false, error: "Network error" } }));
+    } finally {
+      setIsPosting((prev) => ({ ...prev, [platform]: false }));
+    }
+  }, [editedContent, parsedContent]);
 
   const handleCopy = useCallback(async (channel: ChannelKey, text: string) => {
     if (!text) return;
@@ -401,9 +448,13 @@ export default function Home() {
             {/* Active Content */}
             {CHANNELS.map((ch) => {
               if (ch.key !== activeTab) return null;
+              const displayText = getDisplayContent(ch.key);
+              const isEditing = editedContent[ch.key] !== undefined;
+              const isPostable = ch.key === "linkedin" || ch.key === "twitter";
+              const postPlatform = ch.key === "twitter" ? "x" : "linkedin";
               return (
                 <div key={ch.key}>
-                  {parsedContent[ch.key] ? (
+                  {displayText ? (
                     <>
                       <div
                         style={{
@@ -413,7 +464,7 @@ export default function Home() {
                           overflow: "hidden",
                         }}
                       >
-                        {/* Card header with channel name and copy button */}
+                        {/* Card header with channel name and action buttons */}
                         <div
                           style={{
                             display: "flex",
@@ -422,54 +473,144 @@ export default function Home() {
                             padding: "0.65rem 1.2rem",
                             borderBottom: "1px solid var(--rule)",
                             background: "rgba(255,255,255,0.5)",
+                            gap: "0.4rem",
+                            flexWrap: "wrap",
                           }}
                         >
                           <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--dust)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
                             {ch.label}
                           </span>
-                          <button
-                            onClick={() => handleCopy(ch.key, parsedContent[ch.key])}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.4rem",
-                              background: copiedChannel === ch.key ? "#16a34a" : "var(--cobalt)",
-                              color: "#fff",
-                              fontSize: "0.78rem",
-                              fontWeight: 600,
-                              letterSpacing: "0.03em",
-                              padding: "0.42rem 1rem",
-                              borderRadius: "999px",
-                              border: "none",
-                              cursor: "pointer",
-                              transition: "all 0.16s ease",
-                            }}
-                          >
-                            {copiedChannel === ch.key ? (
-                              <>
-                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                            {/* Edit toggle */}
+                            <button
+                              onClick={() => {
+                                if (isEditing) {
+                                  setEditedContent((prev) => {
+                                    const next = { ...prev };
+                                    delete next[ch.key];
+                                    return next;
+                                  });
+                                } else {
+                                  setEditedContent((prev) => ({ ...prev, [ch.key]: parsedContent[ch.key] }));
+                                }
+                              }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.32rem",
+                                background: isEditing ? "var(--amber)" : "var(--paper)",
+                                color: isEditing ? "#fff" : "var(--dust)",
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                padding: "0.36rem 0.7rem",
+                                borderRadius: "999px",
+                                border: isEditing ? "none" : "1.5px solid var(--rule)",
+                                cursor: "pointer",
+                                transition: "all 0.16s ease",
+                              }}
+                            >
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              {isEditing ? "Done" : "Edit"}
+                            </button>
+                            {/* Copy */}
+                            <button
+                              onClick={() => handleCopy(ch.key, displayText)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.32rem",
+                                background: copiedChannel === ch.key ? "#16a34a" : "var(--cobalt)",
+                                color: "#fff",
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                padding: "0.36rem 0.7rem",
+                                borderRadius: "999px",
+                                border: "none",
+                                cursor: "pointer",
+                                transition: "all 0.16s ease",
+                              }}
+                            >
+                              {copiedChannel === ch.key ? "Copied!" : "Copy"}
+                            </button>
+                            {/* Publish button (LinkedIn & Twitter only, signed in only) */}
+                            {isPostable && isSignedIn && (
+                              <button
+                                onClick={() => handlePost(postPlatform as "linkedin" | "x")}
+                                disabled={isPosting[postPlatform]}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.32rem",
+                                  background: postResults[postPlatform]?.success ? "#16a34a" : isPosting[postPlatform] ? "var(--rule)" : "#0a0a0f",
+                                  color: "#fff",
+                                  fontSize: "0.72rem",
+                                  fontWeight: 600,
+                                  padding: "0.36rem 0.7rem",
+                                  borderRadius: "999px",
+                                  border: "none",
+                                  cursor: isPosting[postPlatform] ? "not-allowed" : "pointer",
+                                  transition: "all 0.16s ease",
+                                }}
+                              >
+                                <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: "12px", height: "12px" }}>
+                                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                                 </svg>
-                                Copied!
-                              </>
-                            ) : (
-                              <>
-                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <rect x="9" y="9" width="13" height="13" rx="2" />
-                                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                                </svg>
-                                Copy {ch.label}
-                              </>
+                                {isPosting[postPlatform]
+                                  ? "Posting..."
+                                  : postResults[postPlatform]?.success
+                                  ? "Posted!"
+                                  : `Post to ${ch.key === "twitter" ? "X" : "LinkedIn"}`}
+                              </button>
                             )}
-                          </button>
-                        </div>
-                        {/* Markdown content */}
-                        <div style={{ padding: "1.1rem 1.2rem" }}>
-                          <div className="prose prose-sm max-w-none" style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)" }}>
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {parsedContent[ch.key]}
-                            </ReactMarkdown>
                           </div>
+                        </div>
+                        {/* Post result feedback */}
+                        {postResults[postPlatform] && isPostable && (
+                          <div style={{
+                            padding: "0.5rem 1.2rem",
+                            borderBottom: "1px solid var(--rule)",
+                            background: postResults[postPlatform].success ? "var(--green-dim)" : "var(--amber-dim)",
+                            fontSize: "0.78rem",
+                          }}>
+                            {postResults[postPlatform].success ? (
+                              <span style={{ color: "var(--green)" }}>
+                                Published! <a href={postResults[postPlatform].url} target="_blank" rel="noopener" style={{ fontWeight: 600, textDecoration: "underline" }}>View post &rarr;</a>
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--amber)" }}>
+                                Error: {postResults[postPlatform].error}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Content — editable or markdown */}
+                        <div style={{ padding: "1.1rem 1.2rem" }}>
+                          {isEditing ? (
+                            <textarea
+                              value={editedContent[ch.key] || ""}
+                              onChange={(e) => setEditedContent((prev) => ({ ...prev, [ch.key]: e.target.value }))}
+                              style={{
+                                width: "100%",
+                                minHeight: "200px",
+                                fontFamily: "var(--font-sans)",
+                                fontSize: "0.85rem",
+                                lineHeight: 1.7,
+                                color: "var(--ink)",
+                                background: "transparent",
+                                border: "none",
+                                outline: "none",
+                                resize: "vertical",
+                              }}
+                            />
+                          ) : (
+                            <div className="prose prose-sm max-w-none" style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)" }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {displayText}
+                              </ReactMarkdown>
+                            </div>
+                          )}
                         </div>
                       </div>
                       {ch.key === "image_prompt" && (
