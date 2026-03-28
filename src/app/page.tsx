@@ -84,6 +84,11 @@ export default function Home() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [canPublish, setCanPublish] = useState(false);
 
+  // Upload-Post settings (localStorage-backed)
+  const [userApiKey, setUserApiKey] = useState("");
+  const [userProfile, setUserProfile] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   // Inspiration state (localStorage-backed)
   type Inspiration = { id: string; name: string; linkedin_url: string; sample_posts: string[] };
   const [inspirationOpen, setInspirationOpen] = useState(false);
@@ -105,10 +110,14 @@ export default function Home() {
       const email = (user as { email?: string })?.email;
       setCanPublish(email === "chinatchinat123@gmail.com");
     }).catch(() => {});
-    // Load inspirations from localStorage
+    // Load from localStorage
     try {
       const stored = localStorage.getItem("dd_inspirations");
       if (stored) setInspirations(JSON.parse(stored));
+      const savedKey = localStorage.getItem("dd_upload_post_key");
+      if (savedKey) setUserApiKey(savedKey);
+      const savedProfile = localStorage.getItem("dd_upload_post_profile");
+      if (savedProfile) setUserProfile(savedProfile);
     } catch { /* ignore */ }
   }, []);
 
@@ -220,7 +229,11 @@ export default function Home() {
       const response = await fetch("/api/post-social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, platforms: [platform] }),
+        body: JSON.stringify({
+          text,
+          platforms: [platform],
+          ...(userApiKey && { apiKey: userApiKey, profile: userProfile || "default" }),
+        }),
       });
       const data = await response.json();
       if (data.success && data.results?.[platform]) {
@@ -233,7 +246,7 @@ export default function Home() {
     } finally {
       setIsPosting((prev) => ({ ...prev, [platform]: false }));
     }
-  }, [editedContent, parsedContent]);
+  }, [editedContent, parsedContent, userApiKey, userProfile]);
 
   const handleCopy = useCallback(async (channel: ChannelKey, text: string) => {
     if (!text) return;
@@ -422,6 +435,112 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* Upload-Post Settings — collapsible */}
+            <div
+              style={{
+                border: "1.5px solid var(--rule)",
+                borderRadius: "14px",
+                background: "var(--paper)",
+                overflow: "hidden",
+              }}
+            >
+              <button
+                onClick={() => setSettingsOpen(!settingsOpen)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.7rem 1rem",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  color: "var(--ink)",
+                }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <svg viewBox="0 0 24 24" fill="var(--dust)" style={{ width: "14px", height: "14px" }}>
+                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z" />
+                  </svg>
+                  Post to Social Settings
+                  {userApiKey && (
+                    <span style={{ fontSize: "0.65rem", background: "var(--green-dim)", color: "var(--green)", padding: "0.15rem 0.45rem", borderRadius: "999px", fontWeight: 600 }}>
+                      Connected
+                    </span>
+                  )}
+                </span>
+                <svg viewBox="0 0 16 16" fill="var(--dust)" style={{ width: "12px", height: "12px", transform: settingsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                  <path d="M4.6 5.4L8 8.8l3.4-3.4L13 6.8l-5 5-5-5z" />
+                </svg>
+              </button>
+
+              {settingsOpen && (
+                <div style={{ padding: "0 1rem 1rem", borderTop: "1px solid var(--rule)" }}>
+                  <p style={{ fontSize: "0.75rem", color: "var(--dust)", lineHeight: 1.5, margin: "0.65rem 0 0.75rem" }}>
+                    Connect your own <a href="https://app.upload-post.com/api-keys" target="_blank" rel="noopener" style={{ color: "var(--cobalt)", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(28,63,220,0.2)" }}>Upload-Post API key</a> to publish directly to your LinkedIn &amp; X accounts.
+                  </p>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <div>
+                      <label style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--ink)", display: "block", marginBottom: "0.25rem" }}>
+                        API Key
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Paste your Upload-Post API key"
+                        value={userApiKey}
+                        onChange={(e) => {
+                          setUserApiKey(e.target.value);
+                          localStorage.setItem("dd_upload_post_key", e.target.value);
+                        }}
+                        style={{ width: "100%", height: "36px", fontSize: "0.78rem", padding: "0 0.7rem", borderRadius: "8px", border: "1.5px solid var(--rule)", background: "rgba(255,255,255,0.6)", fontFamily: "var(--font-mono)" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--ink)", display: "block", marginBottom: "0.25rem" }}>
+                        Profile Name <span style={{ color: "var(--dust)", fontWeight: 400 }}>(from Upload-Post)</span>
+                      </label>
+                      <input
+                        placeholder="e.g. my-profile"
+                        value={userProfile}
+                        onChange={(e) => {
+                          setUserProfile(e.target.value);
+                          localStorage.setItem("dd_upload_post_profile", e.target.value);
+                        }}
+                        style={{ width: "100%", height: "36px", fontSize: "0.78rem", padding: "0 0.7rem", borderRadius: "8px", border: "1.5px solid var(--rule)", background: "rgba(255,255,255,0.6)" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: "0.65rem", padding: "0.6rem 0.75rem", background: "var(--cobalt-dim)", borderRadius: "8px", fontSize: "0.72rem", lineHeight: 1.6, color: "var(--ink)" }}>
+                    <strong>How to set up:</strong>
+                    <ol style={{ margin: "0.3rem 0 0", paddingLeft: "1.1rem" }}>
+                      <li>Sign up at <a href="https://www.upload-post.com" target="_blank" rel="noopener" style={{ color: "var(--cobalt)", fontWeight: 600, textDecoration: "none" }}>upload-post.com</a></li>
+                      <li>Go to <a href="https://app.upload-post.com/api-keys" target="_blank" rel="noopener" style={{ color: "var(--cobalt)", fontWeight: 600, textDecoration: "none" }}>API Keys</a> and create a key</li>
+                      <li>Create a profile and connect your LinkedIn / X accounts</li>
+                      <li>Paste your API key and profile name above</li>
+                    </ol>
+                  </div>
+
+                  {userApiKey && (
+                    <button
+                      onClick={() => {
+                        setUserApiKey("");
+                        setUserProfile("");
+                        localStorage.removeItem("dd_upload_post_key");
+                        localStorage.removeItem("dd_upload_post_profile");
+                      }}
+                      style={{ marginTop: "0.5rem", fontSize: "0.72rem", fontWeight: 600, padding: "0.3rem 0.7rem", borderRadius: "999px", border: "1.5px solid var(--rule)", background: "var(--paper)", color: "var(--dust)", cursor: "pointer" }}
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Inspiration Sources — collapsible */}
@@ -864,7 +983,7 @@ export default function Home() {
                               {copiedChannel === ch.key ? "Copied!" : "Copy"}
                             </button>
                             {/* Publish button (LinkedIn & Twitter only, signed in only) */}
-                            {isPostable && canPublish && (
+                            {isPostable && (canPublish || userApiKey) && (
                               <button
                                 onClick={() => handlePost(postPlatform as "linkedin" | "x")}
                                 disabled={isPosting[postPlatform]}

@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_KEY = process.env.UPLOAD_POST_API_KEY;
+const DEFAULT_API_KEY = process.env.UPLOAD_POST_API_KEY;
 const API_URL = "https://api.upload-post.com/api/upload_text";
-const PROFILE = "daydreamers";
+const DEFAULT_PROFILE = "daydreamers";
 
 const VALID_PLATFORMS = new Set(["linkedin", "x"]);
 
 export async function POST(req: NextRequest) {
-  if (!API_KEY) {
+  const { text, platforms, apiKey, profile } = await req.json();
+
+  const activeKey = apiKey || DEFAULT_API_KEY;
+  const activeProfile = apiKey ? (profile || "default") : DEFAULT_PROFILE;
+
+  if (!activeKey) {
     return NextResponse.json(
-      { error: "Upload-Post API key not configured" },
-      { status: 500 }
+      { error: "No API key configured. Add your Upload-Post API key in settings." },
+      { status: 400 }
     );
   }
-
-  const { text, platforms } = await req.json();
 
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     return NextResponse.json({ error: "Text is required" }, { status: 400 });
@@ -31,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const form = new FormData();
-  form.append("user", PROFILE);
+  form.append("user", activeProfile);
   form.append("title", text.trim());
   form.append("async_upload", "false");
   for (const p of validPlatforms) {
@@ -40,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const response = await fetch(API_URL, {
     method: "POST",
-    headers: { Authorization: `Apikey ${API_KEY}` },
+    headers: { Authorization: `Apikey ${activeKey}` },
     body: form,
   });
 
