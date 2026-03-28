@@ -78,6 +78,8 @@ export default function Home() {
   const [imageHtml, setImageHtml] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
   const [imagePlatform, setImagePlatform] = useState("LinkedIn");
+  const [imageMode, setImageMode] = useState<"ai" | "template">("ai");
+  const [aiImageUrl, setAiImageUrl] = useState("");
   const [editedContent, setEditedContent] = useState<Partial<Record<ChannelKey, string>>>({});
   const [isPosting, setIsPosting] = useState<Record<string, boolean>>({});
   const [postResults, setPostResults] = useState<Record<string, { success: boolean; url?: string; error?: string }>>({});
@@ -258,8 +260,10 @@ export default function Home() {
   const handleGenerateImage = useCallback(async () => {
     setImageLoading(true);
     setImageHtml("");
+    setAiImageUrl("");
     try {
-      const response = await fetch("/api/generate-image", {
+      const endpoint = imageMode === "ai" ? "/api/generate-image-ai" : "/api/generate-image";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -271,13 +275,17 @@ export default function Home() {
         }),
       });
       const data = await response.json();
-      setImageHtml(data.html);
+      if (imageMode === "ai" && data.imageUrl) {
+        setAiImageUrl(data.imageUrl);
+      } else if (data.html) {
+        setImageHtml(data.html);
+      }
     } catch (error) {
       console.error("Image generation error:", error);
     } finally {
       setImageLoading(false);
     }
-  }, [projectDescription, brandColors, tone, imagePlatform]);
+  }, [projectDescription, brandColors, tone, imagePlatform, imageMode]);
 
   const hasContent = CHANNELS.some((ch) => parsedContent[ch.key].length > 0);
 
@@ -1063,8 +1071,28 @@ export default function Home() {
                       </div>
                       {ch.key === "image_prompt" && (
                         <div style={{ marginTop: "1rem", padding: "1rem", background: "var(--cream)", borderRadius: "12px", border: "1.5px solid var(--rule)" }}>
-                          <h4 style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: "0.5rem" }}>Generate Image Template</h4>
-                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+                          <h4 style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: "0.5rem" }}>Generate Image</h4>
+                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+                            {/* Mode selector */}
+                            <select
+                              value={imageMode}
+                              onChange={(e) => { setImageMode(e.target.value as "ai" | "template"); setImageHtml(""); setAiImageUrl(""); }}
+                              style={{
+                                height: "32px",
+                                padding: "0 0.6rem",
+                                borderRadius: "8px",
+                                border: "1.5px solid var(--rule)",
+                                background: "var(--paper)",
+                                color: "var(--ink)",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              <option value="ai">AI Image</option>
+                              <option value="template">HTML Template</option>
+                            </select>
+                            {/* Platform pills */}
                             {["LinkedIn", "Instagram", "Twitter"].map((p) => (
                               <button
                                 key={p}
@@ -1098,9 +1126,37 @@ export default function Home() {
                                 opacity: imageLoading ? 0.6 : 1,
                               }}
                             >
-                              {imageLoading ? "Generating..." : "Generate Template"}
+                              {imageLoading ? "Generating..." : "Generate"}
                             </button>
                           </div>
+                          <p style={{ fontSize: "0.7rem", color: "var(--dust)", marginBottom: "0.5rem" }}>
+                            {imageMode === "ai" ? "Generates a real image using AI — higher quality, downloadable." : "Generates an HTML/CSS template — screenshot to use as an image."}
+                          </p>
+                          {/* AI-generated image */}
+                          {aiImageUrl && (
+                            <>
+                              <div style={{ borderRadius: "8px", overflow: "hidden", border: "1.5px solid var(--rule)" }}>
+                                <img src={aiImageUrl} alt="AI-generated promotional image" style={{ width: "100%", display: "block" }} />
+                              </div>
+                              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", justifyContent: "flex-end" }}>
+                                <a
+                                  href={aiImageUrl}
+                                  download="promo-image.png"
+                                  target="_blank"
+                                  rel="noopener"
+                                  style={{
+                                    display: "inline-flex", alignItems: "center", gap: "0.32rem",
+                                    background: "var(--cobalt)", color: "#fff", fontSize: "0.72rem",
+                                    fontWeight: 600, padding: "0.36rem 0.75rem", borderRadius: "999px",
+                                    border: "none", cursor: "pointer", textDecoration: "none",
+                                  }}
+                                >
+                                  Download Image
+                                </a>
+                              </div>
+                            </>
+                          )}
+                          {/* HTML template */}
                           {imageHtml && (
                             <>
                               <IframeScaler
