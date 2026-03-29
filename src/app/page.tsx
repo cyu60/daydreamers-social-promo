@@ -80,6 +80,7 @@ export default function Home() {
   const [imagePlatform, setImagePlatform] = useState("LinkedIn");
   const [imageMode, setImageMode] = useState<"ai" | "template">("ai");
   const [aiImageUrl, setAiImageUrl] = useState("");
+  const [designSystem, setDesignSystem] = useState("");
   const [editedContent, setEditedContent] = useState<Partial<Record<ChannelKey, string>>>({});
   const [isPosting, setIsPosting] = useState<Record<string, boolean>>({});
   const [postResults, setPostResults] = useState<Record<string, { success: boolean; url?: string; error?: string }>>({});
@@ -120,6 +121,8 @@ export default function Home() {
       if (savedKey) setUserApiKey(savedKey);
       const savedProfile = localStorage.getItem("dd_upload_post_profile");
       if (savedProfile) setUserProfile(savedProfile);
+      const savedDesign = localStorage.getItem("dd_design_system");
+      if (savedDesign) setDesignSystem(savedDesign);
     } catch { /* ignore */ }
   }, []);
 
@@ -176,7 +179,7 @@ export default function Home() {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectDescription, brandColors, tone, inspirationPosts: getInspirationPosts() }),
+        body: JSON.stringify({ projectDescription, brandColors, tone, inspirationPosts: getInspirationPosts(), designSystem }),
       });
       if (!response.ok) throw new Error("Failed to generate content");
       const reader = response.body?.getReader();
@@ -395,6 +398,64 @@ export default function Home() {
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
               />
+            </div>
+
+            {/* Design System Import */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                <label style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink)" }}>
+                  Design System <span style={{ color: "var(--dust)", fontWeight: 400 }}>(optional)</span>
+                </label>
+                <div style={{ display: "flex", gap: "0.3rem" }}>
+                  {designSystem && (
+                    <button
+                      onClick={() => { setDesignSystem(""); localStorage.removeItem("dd_design_system"); }}
+                      style={{ fontSize: "0.68rem", fontWeight: 600, padding: "0.2rem 0.5rem", borderRadius: "999px", border: "1.5px solid var(--rule)", background: "var(--paper)", color: "var(--dust)", cursor: "pointer" }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <label style={{ fontSize: "0.68rem", fontWeight: 600, padding: "0.2rem 0.5rem", borderRadius: "999px", border: "1.5px solid var(--cobalt)", background: "var(--cobalt-dim)", color: "var(--cobalt)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    <svg viewBox="0 0 24 24" fill="var(--cobalt)" style={{ width: "11px", height: "11px" }}><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                    Import .md
+                    <input
+                      type="file"
+                      accept=".md,.txt"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const text = ev.target?.result as string;
+                            setDesignSystem(text);
+                            localStorage.setItem("dd_design_system", text);
+                          };
+                          reader.readAsText(file);
+                        }
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+              {designSystem ? (
+                <div style={{ background: "var(--paper)", border: "1.5px solid var(--green)", borderRadius: "12px", padding: "0.6rem 0.8rem", fontSize: "0.78rem", color: "var(--ink)", lineHeight: 1.5 }}>
+                  <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--green)", display: "block", marginBottom: "0.2rem" }}>Design system loaded ({Math.round(designSystem.length / 1024)}KB)</span>
+                  <span style={{ color: "var(--dust)", fontSize: "0.72rem" }}>{designSystem.slice(0, 120).replace(/[#*]/g, "")}...</span>
+                </div>
+              ) : (
+                <Textarea
+                  placeholder="Paste your design.md content here, or import a file above..."
+                  className="min-h-[60px] resize-y"
+                  style={{ background: "var(--paper)", border: "1.5px solid var(--rule)", borderRadius: "12px", fontSize: "0.78rem" }}
+                  value={designSystem}
+                  onChange={(e) => {
+                    setDesignSystem(e.target.value);
+                    if (e.target.value) localStorage.setItem("dd_design_system", e.target.value);
+                  }}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -908,7 +969,6 @@ export default function Home() {
             {CHANNELS.map((ch) => {
               if (ch.key !== activeTab) return null;
               const displayText = getDisplayContent(ch.key);
-              const isEditing = editedContent[ch.key] !== undefined;
               const isPostable = ch.key === "linkedin" || ch.key === "twitter";
               const postPlatform = ch.key === "twitter" ? "x" : "linkedin";
               return (
@@ -940,39 +1000,6 @@ export default function Home() {
                             {ch.label}
                           </span>
                           <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                            {/* Edit toggle */}
-                            <button
-                              onClick={() => {
-                                if (isEditing) {
-                                  setEditedContent((prev) => {
-                                    const next = { ...prev };
-                                    delete next[ch.key];
-                                    return next;
-                                  });
-                                } else {
-                                  setEditedContent((prev) => ({ ...prev, [ch.key]: parsedContent[ch.key] }));
-                                }
-                              }}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.32rem",
-                                background: isEditing ? "var(--amber)" : "var(--paper)",
-                                color: isEditing ? "#fff" : "var(--dust)",
-                                fontSize: "0.72rem",
-                                fontWeight: 600,
-                                padding: "0.36rem 0.7rem",
-                                borderRadius: "999px",
-                                border: isEditing ? "none" : "1.5px solid var(--rule)",
-                                cursor: "pointer",
-                                transition: "all 0.16s ease",
-                              }}
-                            >
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                              {isEditing ? "Done" : "Edit"}
-                            </button>
                             {/* Copy */}
                             <button
                               onClick={() => handleCopy(ch.key, displayText)}
@@ -1044,31 +1071,30 @@ export default function Home() {
                             )}
                           </div>
                         )}
-                        {/* Content — editable or markdown */}
-                        <div style={{ padding: "1.1rem 1.2rem" }}>
-                          {isEditing ? (
-                            <textarea
-                              value={editedContent[ch.key] || ""}
-                              onChange={(e) => setEditedContent((prev) => ({ ...prev, [ch.key]: e.target.value }))}
-                              style={{
-                                width: "100%",
-                                minHeight: "200px",
-                                fontFamily: "var(--font-sans)",
-                                fontSize: "0.85rem",
-                                lineHeight: 1.7,
-                                color: "var(--ink)",
-                                background: "transparent",
-                                border: "none",
-                                outline: "none",
-                                resize: "vertical",
-                              }}
-                            />
-                          ) : (
-                            <div style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", lineHeight: 1.7, color: "var(--ink)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                              {displayText}
-                            </div>
-                          )}
-                        </div>
+                        {/* Content — click to edit inline */}
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const newText = e.currentTarget.innerText;
+                            if (newText !== parsedContent[ch.key]) {
+                              setEditedContent((prev) => ({ ...prev, [ch.key]: newText }));
+                            }
+                          }}
+                          style={{
+                            padding: "1.1rem 1.2rem",
+                            fontFamily: "var(--font-sans)",
+                            fontSize: "0.85rem",
+                            lineHeight: 1.7,
+                            color: "var(--ink)",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word" as const,
+                            outline: "none",
+                            cursor: "text",
+                            minHeight: "80px",
+                          }}
+                          dangerouslySetInnerHTML={{ __html: displayText.replace(/\n/g, "<br>") }}
+                        />
                       </div>
                     </>
                   ) : isGenerating ? (

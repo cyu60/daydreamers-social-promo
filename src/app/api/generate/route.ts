@@ -2,11 +2,16 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 export async function POST(req: Request) {
-  const { projectDescription, brandColors, tone, inspirationPosts } = await req.json();
+  const { projectDescription, brandColors, tone, inspirationPosts, designSystem } = await req.json();
 
   let inspirationSection = "";
   if (inspirationPosts && inspirationPosts.length > 0) {
     inspirationSection = `\n\nHere are example posts from influencers the user admires. Match their style, tone, and formatting patterns:\n\n${inspirationPosts.join("\n\n---\n\n")}`;
+  }
+
+  let designSection = "";
+  if (designSystem && typeof designSystem === "string" && designSystem.trim().length > 0) {
+    designSection = `\n\nThe user has provided a design system specification. Use it to inform the visual language, tone, and brand personality of all generated content. Reference specific colors, typography choices, and brand voice from this system:\n\n${designSystem.slice(0, 4000)}`;
   }
 
   const result = streamText({
@@ -52,7 +57,7 @@ Write an email announcement in plain text suitable for an email client. Start wi
 Write a detailed prompt (2-3 sentences) for generating a promotional social media image. Describe visual style, colors, composition, and key text to include.
 
 Tone: ${tone || "Professional"}
-${brandColors ? `Brand colors to reference: ${brandColors}` : ""}${inspirationSection}`,
+${brandColors ? `Brand colors to reference: ${brandColors}` : ""}${designSection}${inspirationSection}`,
     prompt: `Generate promotional content for the following project:\n\n${projectDescription}`,
     onError({ error }) {
       console.error("Stream error:", error);
