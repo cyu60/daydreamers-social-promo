@@ -864,9 +864,12 @@ export default function Home() {
               boxShadow: "0 16px 36px rgba(16,17,26,0.05)",
             }}
           >
-            <h3 style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--ink)", marginBottom: "0.25rem" }}>Generated Content</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", fontWeight: 700, color: "#fff", background: "var(--cobalt)", width: "20px", height: "20px", borderRadius: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>1</span>
+              <h3 style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--ink)" }}>Text Content</h3>
+            </div>
             <p style={{ fontSize: "0.82rem", color: "var(--dust)", lineHeight: 1.6, marginBottom: "1rem" }}>
-              Click each channel tab to view and copy your content.
+              Click each channel tab to view, edit, and copy your content.
             </p>
 
             {/* Channel Tabs */}
@@ -1067,118 +1070,6 @@ export default function Home() {
                           )}
                         </div>
                       </div>
-                      {ch.key === "image_prompt" && (
-                        <div style={{ marginTop: "1rem", padding: "1rem", background: "var(--cream)", borderRadius: "12px", border: "1.5px solid var(--rule)" }}>
-                          <h4 style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: "0.5rem" }}>Generate Image</h4>
-                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
-                            {/* Mode selector */}
-                            <select
-                              value={imageMode}
-                              onChange={(e) => { setImageMode(e.target.value as "ai" | "template"); setImageHtml(""); setAiImageUrl(""); }}
-                              style={{
-                                height: "32px",
-                                padding: "0 0.6rem",
-                                borderRadius: "8px",
-                                border: "1.5px solid var(--rule)",
-                                background: "var(--paper)",
-                                color: "var(--ink)",
-                                fontSize: "0.75rem",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                              }}
-                            >
-                              <option value="ai">AI Image</option>
-                              <option value="template">HTML Template</option>
-                            </select>
-                            {/* Platform pills */}
-                            {["LinkedIn", "Instagram", "Twitter"].map((p) => (
-                              <button
-                                key={p}
-                                onClick={() => setImagePlatform(p)}
-                                style={{
-                                  padding: "0.35rem 0.75rem",
-                                  borderRadius: "999px",
-                                  border: imagePlatform === p ? "1.5px solid var(--cobalt)" : "1.5px solid var(--rule)",
-                                  background: imagePlatform === p ? "var(--cobalt-dim)" : "transparent",
-                                  color: imagePlatform === p ? "var(--cobalt)" : "var(--dust)",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 600,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                {p}
-                              </button>
-                            ))}
-                            <button
-                              onClick={handleGenerateImage}
-                              disabled={imageLoading}
-                              style={{
-                                padding: "0.35rem 0.85rem",
-                                borderRadius: "999px",
-                                border: "none",
-                                background: "var(--cobalt)",
-                                color: "#fff",
-                                fontSize: "0.75rem",
-                                fontWeight: 600,
-                                cursor: imageLoading ? "not-allowed" : "pointer",
-                                opacity: imageLoading ? 0.6 : 1,
-                              }}
-                            >
-                              {imageLoading ? "Generating..." : "Generate"}
-                            </button>
-                          </div>
-                          <p style={{ fontSize: "0.7rem", color: "var(--dust)", marginBottom: "0.5rem" }}>
-                            {imageMode === "ai" ? "Generates a real image using AI — higher quality, downloadable." : "Generates an HTML/CSS template — screenshot to use as an image."}
-                          </p>
-                          {/* AI-generated image */}
-                          {aiImageUrl && (
-                            <>
-                              <div style={{ borderRadius: "8px", overflow: "hidden", border: "1.5px solid var(--rule)" }}>
-                                <img src={aiImageUrl} alt="AI-generated promotional image" style={{ width: "100%", display: "block" }} />
-                              </div>
-                              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", justifyContent: "flex-end" }}>
-                                <a
-                                  href={aiImageUrl}
-                                  download="promo-image.png"
-                                  target="_blank"
-                                  rel="noopener"
-                                  style={{
-                                    display: "inline-flex", alignItems: "center", gap: "0.32rem",
-                                    background: "var(--cobalt)", color: "#fff", fontSize: "0.72rem",
-                                    fontWeight: 600, padding: "0.36rem 0.75rem", borderRadius: "999px",
-                                    border: "none", cursor: "pointer", textDecoration: "none",
-                                  }}
-                                >
-                                  Download Image
-                                </a>
-                              </div>
-                            </>
-                          )}
-                          {/* HTML template */}
-                          {imageHtml && (
-                            <>
-                              <IframeScaler
-                                html={imageHtml}
-                                nativeWidth={imagePlatform === "Instagram" ? 1080 : 1200}
-                                nativeHeight={imagePlatform === "LinkedIn" ? 627 : imagePlatform === "Instagram" ? 1080 : 675}
-                              />
-                              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", justifyContent: "flex-end" }}>
-                                <button
-                                  onClick={() => { navigator.clipboard.writeText(imageHtml); }}
-                                  style={{
-                                    display: "inline-flex", alignItems: "center", gap: "0.32rem",
-                                    background: "var(--cobalt)", color: "#fff", fontSize: "0.72rem",
-                                    fontWeight: 600, padding: "0.36rem 0.75rem", borderRadius: "999px",
-                                    border: "none", cursor: "pointer",
-                                  }}
-                                >
-                                  Copy HTML
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
                     </>
                   ) : isGenerating ? (
                     <div style={{ padding: "1.1rem 1.2rem", background: "var(--paper)", borderRadius: "12px", border: "1.5px solid var(--rule)" }}>
@@ -1197,6 +1088,137 @@ export default function Home() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Step 2: Image Generation */}
+        {hasContent && (
+          <div
+            className="card-pad"
+            style={{
+              background: "rgba(255,255,255,0.62)",
+              border: "1px solid rgba(16,17,26,0.10)",
+              borderRadius: "24px",
+              padding: "1.5rem 1.75rem",
+              boxShadow: "0 16px 36px rgba(16,17,26,0.05)",
+              marginTop: "1.25rem",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", fontWeight: 700, color: "#fff", background: "var(--cobalt)", width: "20px", height: "20px", borderRadius: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>2</span>
+              <h3 style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--ink)" }}>Image Assets</h3>
+            </div>
+            <p style={{ fontSize: "0.82rem", color: "var(--dust)", lineHeight: 1.6, marginBottom: "1rem" }}>
+              Generate a promotional image to attach to your social post.
+            </p>
+
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+              <select
+                value={imageMode}
+                onChange={(e) => { setImageMode(e.target.value as "ai" | "template"); setImageHtml(""); setAiImageUrl(""); }}
+                style={{
+                  height: "36px",
+                  padding: "0 0.7rem",
+                  borderRadius: "10px",
+                  border: "1.5px solid var(--rule)",
+                  background: "var(--paper)",
+                  color: "var(--ink)",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <option value="ai">AI Image</option>
+                <option value="template">HTML Template</option>
+              </select>
+              {["LinkedIn", "Instagram", "Twitter"].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setImagePlatform(p)}
+                  style={{
+                    padding: "0.4rem 0.8rem",
+                    borderRadius: "999px",
+                    border: imagePlatform === p ? "1.5px solid var(--cobalt)" : "1.5px solid var(--rule)",
+                    background: imagePlatform === p ? "var(--cobalt-dim)" : "transparent",
+                    color: imagePlatform === p ? "var(--cobalt)" : "var(--dust)",
+                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={handleGenerateImage}
+                disabled={imageLoading || !projectDescription.trim()}
+                style={{
+                  padding: "0.4rem 1rem",
+                  borderRadius: "999px",
+                  border: "none",
+                  background: imageLoading || !projectDescription.trim() ? "var(--rule)" : "var(--cobalt)",
+                  color: "#fff",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: imageLoading || !projectDescription.trim() ? "not-allowed" : "pointer",
+                }}
+              >
+                {imageLoading ? "Generating..." : "Generate Image"}
+              </button>
+            </div>
+
+            <p style={{ fontSize: "0.72rem", color: "var(--dust)", marginBottom: "0.75rem" }}>
+              {imageMode === "ai" ? "Uses AI to generate a unique promotional image — downloadable as PNG." : "Generates an HTML/CSS template — screenshot to use as an image."}
+            </p>
+
+            {/* AI-generated image */}
+            {aiImageUrl && (
+              <>
+                <div style={{ borderRadius: "10px", overflow: "hidden", border: "1.5px solid var(--rule)" }}>
+                  <img src={aiImageUrl} alt="AI-generated promotional image" style={{ width: "100%", display: "block" }} />
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", justifyContent: "flex-end" }}>
+                  <a
+                    href={aiImageUrl}
+                    download="promo-image.png"
+                    target="_blank"
+                    rel="noopener"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "0.32rem",
+                      background: "var(--cobalt)", color: "#fff", fontSize: "0.75rem",
+                      fontWeight: 600, padding: "0.4rem 0.85rem", borderRadius: "999px",
+                      border: "none", cursor: "pointer", textDecoration: "none",
+                    }}
+                  >
+                    Download Image
+                  </a>
+                </div>
+              </>
+            )}
+
+            {/* HTML template */}
+            {imageHtml && (
+              <>
+                <IframeScaler
+                  html={imageHtml}
+                  nativeWidth={imagePlatform === "Instagram" ? 1080 : 1200}
+                  nativeHeight={imagePlatform === "LinkedIn" ? 627 : imagePlatform === "Instagram" ? 1080 : 675}
+                />
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(imageHtml); }}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "0.32rem",
+                      background: "var(--cobalt)", color: "#fff", fontSize: "0.75rem",
+                      fontWeight: 600, padding: "0.4rem 0.85rem", borderRadius: "999px",
+                      border: "none", cursor: "pointer",
+                    }}
+                  >
+                    Copy HTML
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </main>
